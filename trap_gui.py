@@ -211,22 +211,27 @@ class TrapRegion(SingletonHasTraits):
     """    
     min_center = Float
     max_center = Float
+    max_width = Float
     names = List(Str)
     name = Str
     solutions = List(Str)
     solution = Str
     center = Range(-10.0, None, 10.0)
+    width = Range(0.0, None, 10.0)
     sym_scale = Range(0.0, 10.0, value=1)
     asym_scale = Range(0.0, 10.0)
     sub_electrode = Bool
 
     _sub_electrode_allowed = True
+    _width_allowed = False
+    
     _solution_update_thread = SolutionPlotUpdater()
     
     view = View( Item('solution', editor=EnumEditor(name = 'solutions')),
                  Item('name', editor=EnumEditor(name = 'names'), label='Region name'),
                  Item('sub_electrode', label='Sub-electrode solution', enabled_when='_sub_electrode_allowed'),
                  Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider')),
+                 Item('width', enabled_when='_width_allowed', editor=RangeEditor(high_name = 'max_width', mode='slider')),
                  Item('sym_scale'),
                  Item('asym_scale')
                )
@@ -247,10 +252,12 @@ class TrapRegion(SingletonHasTraits):
         try:
             self.min_center = limits[0]
             self.max_center = limits[1]
+            self.max_width = limits[1]-limits[0]
             print 'reset range of ', self.name, limits
         except ValueError:
             self.min_center = -1.0
-            self.max_center = 1.0        
+            self.max_center = 1.0
+            self.max_width = 1.0        
         except TypeError:
             pass
 
@@ -264,11 +271,27 @@ class TrapRegion(SingletonHasTraits):
             return
         
         print 'update sub electrode solution for ', self.solution    
-        if len(set(sol._offsets)) > 2:
-            self._sub_electrode_allowed = True
-        else:
+        try:
+            if len(set(sol._offsets)) > 2:
+                self._sub_electrode_allowed = True
+            else:
+                self._sub_electrode_allowed = False
+                self.sub_electrode = False
+        except AttributeError:
             self._sub_electrode_allowed = False
             self.sub_electrode = False
+            
+    @on_trait_change('solution')
+    def _update_width_enabled(self):
+        "Disable width is not allowed by solution"
+        try:
+            sol = solutions.get_from_description( self.solution )(None)
+        except TypeError:
+            print 'Solution not found, not able to update sub electrode option'
+            return
+        
+        self._width_allowed = 'width' in sol.adjustable
+        
     
     #@on_trait_change('solution', 'name', 'center', 'sym_scale', 'asym_scale', 'sub_electrode')
     @on_trait_change('name,solution,center,sym_scale,asym_scale,sub_electrode')
@@ -466,20 +489,23 @@ class SequenceStart(SingletonHasTraits):
 
     min_center = Float
     max_center = Float
+    max_width = Float
     names = List(Str)
     region_name = Str
     center = Range(-10.0, None, 10.0)
+    width = Range(0.0, None, 10.0)
         
     view = View( Item('region_name', editor=EnumEditor(name = 'names'), label='Region name'),
-                 Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider'))
+                 Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider')),
+                 Item('width',  editor=RangeEditor(high_name = 'max_width', mode='slider'))
                )
     
     def _region_name_fired(self):
-        #limits = mappings.get_xlimits(Chip().trap, self.region_name)
         limits = Chip().mapping.get_xlimits(self.region_name)
         try:
             self.min_center = limits[0]
             self.max_center = limits[1]
+            self.max_width = limits[1] - limits[0]
             print 'reset range of ', self.region_name, limits
         except ValueError:
             self.min_center = -1.0
@@ -491,12 +517,15 @@ class SequenceEnd(SingletonHasTraits):
 
     min_center = Float
     max_center = Float
+    max_width = Float
     names = List(Str)
     region_name = Str
     center = Range(-10.0, None, 10.0)
+    width = Range(0.0, None, 10.0)
         
     view = View( Item('region_name', editor=EnumEditor(name = 'names'), label='Region name'),
-                 Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider'))
+                 Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider')),
+                 Item('width',  editor=RangeEditor(high_name = 'max_width', mode='slider'))
                )
                
     def _region_name_fired(self):
@@ -504,10 +533,12 @@ class SequenceEnd(SingletonHasTraits):
         try:
             self.min_center = limits[0]
             self.max_center = limits[1]
+            self.max_width = limits[1] - limits[0]
             print 'reset range of ', self.region_name, limits
         except ValueError:
             self.min_center = -1.0
             self.max_center = 1.0        
+            self.max_width = 1.0        
         except TypeError:
             pass
 

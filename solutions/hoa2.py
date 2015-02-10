@@ -62,9 +62,9 @@ class SandiaRot45(Solution):
         voltage('Q', 8	, 0.007	, -.19, .85)
         voltage('Q', 9	, 0.004	, -.19, .85)
 
-class John(Solution):
+class UWQuant(Solution):
     for_traps = ('hoa2')
-    description = 'Johns solution'
+    description = 'UW Quantum Region Solution'
     uses_regions = ('Q')
     adjustable = ('Sym scale')
     
@@ -154,4 +154,16 @@ class John(Solution):
         
         laser('Q', 0  , [.1]  )
         laser('Q', 19 , [3.1] )
+        
+class SymMerge(Solution):
+    for_traps = ('hoa2')
+    description = 'Symmetric merge'
+    uses_regions = ('Q')
+    adjustable = ('Sym scale', 'width')
+    
+    def __init__(self, p):
+        self.base_solution = UWQuant(p)
+        
+    def interpolated_voltage_at(self, (x,y), region):
+        return self.base_solution.interpolated_voltage_at((x,y), region)
         

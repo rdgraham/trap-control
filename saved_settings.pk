@@ -4,10 +4,10 @@ p2
 S'Q'
 sS'TrapRegion.center'
 p3
-F11.337300000000001
+F11.039
 sS'TrapRegion.sym_scale'
 p4
-F1.6569999999999998
+F2.7370000000000001
 sS'LasersPanel.region4'
 p5
 S'Q'
@@ -29,6 +29,6 @@ Vhoa2
 p11
 sS'TrapRegion.solution'
 p12
-S'Johns solution'
+S'Symmetric merge'
 p13
 s.
