@@ -100,8 +100,8 @@ class Chip(SingletonHasTraits):
         # update available solutions enum box
         available_solutions = [c.description for c in filter(lambda c : self.trap in c.for_traps , solutions.solution_classes)]
         tr = TrapRegion()
-        tr.solutions = available_solutions
-        tr.solution = SettingLoader('TrapRegion.solution' , available_solutions[0])()
+        tr.solution_descriptions = available_solutions
+        tr.solution_description = SettingLoader('TrapRegion.solution_description' , available_solutions[0])()
         tr.names = names
         tr.name = SettingLoader('TrapRegion.name', names[0])()
         tr._update_limits()
@@ -116,8 +116,8 @@ class Chip(SingletonHasTraits):
             lp.__dict__[name] = region
             lp._region_change_handler(name, region)
         
-        SequenceBase().solutions = available_solutions
-        SequenceBase().solution = SettingLoader('SequenceBase.solution', available_solutions[0])()
+        SequenceBase().solution_descriptions = available_solutions
+        SequenceBase().solution_description = SettingLoader('SequenceBase.solution_description', available_solutions[0])()
         
         to_save['chip.trap'] = self.trap
 
@@ -146,13 +146,16 @@ class SolutionPlotUpdater(threading.Thread):
             
         ax = dp.solution_figure.axes[0]
         
-        solution_class = solutions.get_from_description( cp.manual_panel.trap_region.solution )
-        if solution_class is None:
-            print 'No known trapping solution. Can not update display.'
-            return
+        #solution_class = solutions.get_from_description( cp.manual_panel.trap_region.solution )
+        #if solution_class is None:
+        #    print 'No known trapping solution. Can not update display.'
+        #    return
         
-        solution = solution_class( cp.setup_panel.parameters )
+        #solution = solution_class( cp.setup_panel.parameters )
         #limits = mappings.get_xlimits(cp.setup_panel.chip.trap, cp.manual_panel.trap_region.name)
+        
+        solution = ManualPanel().trap_region.solution
+        
         limits = Chip().mapping.get_xlimits(cp.manual_panel.trap_region.name)
         xvals = np.linspace( limits[0], limits[1], num=1+limits[1]-limits[0] )
         
@@ -214,8 +217,10 @@ class TrapRegion(SingletonHasTraits):
     max_width = Float
     names = List(Str)
     name = Str
-    solutions = List(Str)
-    solution = Str
+    solution_descriptions = List(Str)
+    solution_description = Str
+    #solutions = List(Str)
+    #solution = Str
     center = Range(-10.0, None, 10.0)
     width = Range(0.0, None, 10.0)
     sym_scale = Range(0.0, 10.0, value=1)
@@ -227,7 +232,7 @@ class TrapRegion(SingletonHasTraits):
     
     _solution_update_thread = SolutionPlotUpdater()
     
-    view = View( Item('solution', editor=EnumEditor(name = 'solutions')),
+    view = View( Item('solution_description', label='Solution', editor=EnumEditor(name = 'solution_descriptions')),
                  Item('name', editor=EnumEditor(name = 'names'), label='Region name'),
                  Item('sub_electrode', label='Sub-electrode solution', enabled_when='_sub_electrode_allowed'),
                  Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider')),
@@ -261,18 +266,19 @@ class TrapRegion(SingletonHasTraits):
         except TypeError:
             pass
 
-    @on_trait_change('solution')
+    @property
+    def solution(self):
+        try:
+            return solutions.get_from_description( self.solution_description )( Parameters() )
+        except TypeError:
+            print 'Solution with description '+self.solution_description+' not found'
+
+    @on_trait_change('solution_description')
     def _update_sub_electrode(self):
         # Disable and clear the sub_electrodes box if not enough electrode offsets available
+        print 'update sub electrode solution for ', self.solution
         try:
-            sol = solutions.get_from_description( self.solution )(None)
-        except TypeError:
-            print 'Solution not found, not able to update sub electrode option'
-            return
-        
-        print 'update sub electrode solution for ', self.solution    
-        try:
-            if len(set(sol._offsets)) > 2:
+            if len(set(self.solution._offsets)) > 2:
                 self._sub_electrode_allowed = True
             else:
                 self._sub_electrode_allowed = False
@@ -281,20 +287,13 @@ class TrapRegion(SingletonHasTraits):
             self._sub_electrode_allowed = False
             self.sub_electrode = False
             
-    @on_trait_change('solution')
+    @on_trait_change('solution_description')
     def _update_width_enabled(self):
         "Disable width is not allowed by solution"
-        try:
-            sol = solutions.get_from_description( self.solution )(None)
-        except TypeError:
-            print 'Solution not found, not able to update sub electrode option'
-            return
         
-        self._width_allowed = 'width' in sol.adjustable
+        self._width_allowed = 'width' in self.solution.adjustable
         
-    
-    #@on_trait_change('solution', 'name', 'center', 'sym_scale', 'asym_scale', 'sub_electrode')
-    @on_trait_change('name,solution,center,sym_scale,asym_scale,sub_electrode')
+    @on_trait_change('name,solution_description,width,center,sym_scale,asym_scale,sub_electrode')
     def _update_solution_display(self, trait=None, name=None, new=None):
         if self._solution_update_thread.is_alive():
             self._solution_update_thread.stop()
@@ -302,17 +301,9 @@ class TrapRegion(SingletonHasTraits):
         self._solution_update_thread = SolutionPlotUpdater()
         self._solution_update_thread.start()
         
-        #print 'Saving',name
+        #Save all settings
         if name is not None and new is not None:
             to_save['TrapRegion.'+name] = new
-    
-    #def __init__(self):
-    #    print 'Updating all trap region stuff'
-    #    self._name_fired()
-    #    self._update_limits()
-    #    self._update_sub_electrode()
-    #    #self._update_solution_display()
-        
                         
 class PhotonsPlotUpdater(threading.Thread):
     """ Update the scrolling display of the counter, counter specified by given driver drv
@@ -475,16 +466,23 @@ class LasersPanel(SingletonHasTraits):
 class SequenceBase(SingletonHasTraits):
     """ Paramaters to control the trap region
     """    
-    solutions = List(Str)
-    solution = Str
+    solution_descriptions = List(Str)
+    solution_description = Str
     sym_scale = Range(0.0, 10.0)
     asym_scale = Range(0.0, 10.0)
     
-    view = View( Item('solution', editor=EnumEditor(name = 'solutions')),
+    view = View( Item('solution_description', label='Solution', editor=EnumEditor(name = 'solution_descriptions')),
                  Item('sym_scale'),
                  Item('asym_scale')
                )
-    
+               
+    @property
+    def solution(self):
+        try:
+            return solutions.get_from_description( self.solution_description )( Parameters() )
+        except TypeError:
+            print 'Solution with description '+self.solution_description+' not found'
+
 class SequenceStart(SingletonHasTraits):
 
     min_center = Float
@@ -494,11 +492,23 @@ class SequenceStart(SingletonHasTraits):
     region_name = Str
     center = Range(-10.0, None, 10.0)
     width = Range(0.0, None, 10.0)
-        
+    
     view = View( Item('region_name', editor=EnumEditor(name = 'names'), label='Region name'),
                  Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider')),
                  Item('width',  editor=RangeEditor(high_name = 'max_width', mode='slider'))
                )
+    
+    @property
+    def sym_scale(self):
+        return SequenceBase().sym_scale
+    
+    @property
+    def asym_scale(self):
+        return SequenceBase().asym_scale
+        
+    @property
+    def solution(self):
+        return SequenceBase().solution
     
     def _region_name_fired(self):
         limits = Chip().mapping.get_xlimits(self.region_name)
@@ -522,6 +532,10 @@ class SequenceEnd(SingletonHasTraits):
     region_name = Str
     center = Range(-10.0, None, 10.0)
     width = Range(0.0, None, 10.0)
+    
+    sym_scale = SequenceBase().sym_scale
+    asym_scale = SequenceBase().asym_scale
+    solution = SequenceBase().solution
         
     view = View( Item('region_name', editor=EnumEditor(name = 'names'), label='Region name'),
                  Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider')),
@@ -572,8 +586,7 @@ class SequenceRun(SingletonHasTraits):
         c = dac_control.DacController(Devices().dac_driver, Chip().mapping)
         # TODO: implement clear beforehand
 
-        sequence = c.build_sequence( SequenceBase(), 
-                                     SequenceStart(),
+        sequence = c.build_sequence( SequenceStart(),
                                      SequenceEnd(),
                                      self.steps, 
                                      return_to_start = self.return_to_start )
@@ -698,15 +711,15 @@ class ManualPanel(SingletonHasTraits):
     def _update_lasers_fired(self):
         lp = LasersPanel()
         cp = ControlPanel()
-        solution_class = solutions.get_from_description( cp.manual_panel.trap_region.solution )
-        if solution_class is None: 
-            print 'No solution found, not updating lasers'
-            return
-        solution = solution_class( cp.setup_panel.parameters )
+        #solution_class = solutions.get_from_description( cp.manual_panel.trap_region.solution )
+        #if solution_class is None: 
+        #    print 'No solution found, not updating lasers'
+        #    return
+        #solution = solution_class( cp.setup_panel.parameters )
         
         print 'Updating lasers'
         driver = lasers.Driver( Devices().lasers_driver_name )
-        driver.set_solution(solution)
+        driver.set_solution( TrapRegion().solution )
         driver.clear_all()
         driver.set_cooling_time(lp.cooling_time)
         for region, position in lp.get_laser_positions():

@@ -19,6 +19,9 @@ class Solution(object):
         
         self.add_negatives = False  #if true, automatically add opposite solution to any given offset
     
+    def __str__(self):
+        return 'Solution Class : '+self.description
+    
     def laser(self, region, position, voltages):
         "Shortcut function to specify laser voltage required for given position and region"
         self._laser_positions.append(position)

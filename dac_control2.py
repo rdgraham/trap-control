@@ -423,14 +423,14 @@ class DacController(object):
         """
         # get all electrodes in the region
         
-        solution = solutions.get_from_description( region.solution )(None)
+        #solution = solutions.get_from_description( region.solution )(None)
         
         potentials = {}
         for electrode, x, y in self.trap.get_electrode_locations( region.name ):
             if interpolate :
-                voltage = solution.interpolated_voltage_at( (x,y), region)
+                voltage = region.solution.interpolated_voltage_at( (x,y), region)
             else:
-                voltage = solution.voltage_at( (x,y), region)
+                voltage = region.solution.voltage_at( (x,y), region)
             potentials[electrode] = voltage
             if DEBUG : print 'Will set electrode '+electrode+' = '+str(voltage)
 
@@ -439,27 +439,29 @@ class DacController(object):
         frames_to_write = frames_to_write + frames_to_write
         return frames_to_write
         
-    def build_sequence( self, base_solution, start, end, steps, return_to_start = False):
+    def build_sequence( self, start, end, steps, return_to_start = False):
         """ Returns a list of frames for a sequence operation from start to end in a given number of steps.
             
             This does the conversion from physical positions along the x axis of the trap region to the relevant
             electrodes and internally uses Solution.interpolated_voltage_at().
             
-            start/end are TrapRegion objects which contain the physical positions along the x axis of the trap region.
-            base_solution is the (string) description identifying the solution to use
+            start/end are TrapRegion objects which define the trap created at the start and end of the sequence.
+            TrapRegions will be created in betwen these points by interpolation of the center and width parameters.
+            
             return_to_start, if True will write frames for a sequence from end back to start after to move the potential
             back to the starting position.
 
-            Note : currently only supports sequences along one region (the region set in the starting TrapRegion)
+            Note : currently only supports sequences along one region. The region, scale factors and solutions should
+                   be the same in both the start and end regions
         """
         
         frames_to_write = []
         
-        solution_class = solutions.get_from_description( base_solution.solution )
-        if solution_class is None:
-            print "No known trapping solution. Can't update display"
-            return
-        solution = solution_class(None) ## TODO: pass in trap parameters somehow
+        #solution_class = solutions.get_from_description( base_solution.solution )
+        #if solution_class is None:
+        #    print "No known trapping solution. Can't update display"
+        #    return
+        #solution = solution_class(None) ## TODO: pass in trap parameters somehow
         
         delta = (end.center - start.center) / float(steps)
         for step in range(steps):
@@ -469,15 +471,16 @@ class DacController(object):
             trap_region = lambda : None
             trap_region.name = start.region_name  ## TODO: support multiple regions somehow
             trap_region.center = start.center + step * delta
-            trap_region.sym_scale = base_solution.sym_scale
-            trap_region.asym_scale = base_solution.asym_scale
+            trap_region.sym_scale = start.sym_scale
+            trap_region.asym_scale = start.asym_scale
+            trap_region.solution = start.solution
             trap_region.sub_electrode = True
             
             # get dict of potentials at each electrode
             potentials = {}
             #for electrode, x, y in mappings.get_electrode_locations( Chip().trap, trap_region.name ):
             for electrode, x, y in self.trap.get_electrode_locations( trap_region.name ):
-                voltage = solution.interpolated_voltage_at( (x,y), trap_region)
+                voltage = trap_region.solution.interpolated_voltage_at( (x,y), trap_region)
                 potentials[electrode] = voltage
                 
             # get the raw data required to update previous solution to current
@@ -485,7 +488,7 @@ class DacController(object):
             frames_to_write = frames_to_write + new_frames + new_frames #need to write twice
         
         if return_to_start:
-            frames_to_write = frames_to_write + self.build_sequence( base_solution, end, start, steps, return_to_start = False )
+            frames_to_write = frames_to_write + self.build_sequence( end, start, steps, return_to_start = False )
         
         return frames_to_write
         
