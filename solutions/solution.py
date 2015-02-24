@@ -143,3 +143,16 @@ class Solution(object):
         return {}
 
 
+class CopyRegion(object):
+    """ This is a convienence class. It will make a copy of a TrapRegion,
+        preserving only the basic paramaters : center, scalefactor, etc.
+        The solution will not be copied.
+    """
+    def __init__(self, original):
+        self.sym_scale = original.sym_scale
+        self.asym_scale = original.asym_scale
+        self.center = original.center
+        self.width = original.width
+        self.sub_electrode = original.sub_electrode
+        self.name = str(original.name)
+        

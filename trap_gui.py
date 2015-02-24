@@ -219,8 +219,6 @@ class TrapRegion(SingletonHasTraits):
     name = Str
     solution_descriptions = List(Str)
     solution_description = Str
-    #solutions = List(Str)
-    #solution = Str
     center = Range(-10.0, None, 10.0)
     width = Range(0.0, None, 10.0)
     sym_scale = Range(0.0, 10.0, value=1)
@@ -470,6 +468,7 @@ class SequenceBase(SingletonHasTraits):
     solution_description = Str
     sym_scale = Range(0.0, 10.0)
     asym_scale = Range(0.0, 10.0)
+    _width_allowed = False
     
     view = View( Item('solution_description', label='Solution', editor=EnumEditor(name = 'solution_descriptions')),
                  Item('sym_scale'),
@@ -483,6 +482,12 @@ class SequenceBase(SingletonHasTraits):
         except TypeError:
             print 'Solution with description '+self.solution_description+' not found'
 
+    @on_trait_change('solution_description')
+    def _update_width_enabled(self):
+        "Disable width is not allowed by solution"
+        
+        self._width_allowed = 'width' in self.solution.adjustable
+
 class SequenceStart(SingletonHasTraits):
 
     min_center = Float
@@ -492,11 +497,17 @@ class SequenceStart(SingletonHasTraits):
     region_name = Str
     center = Range(-10.0, None, 10.0)
     width = Range(0.0, None, 10.0)
-    
+    _width_allowed = Bool
+    _sequence_base = Instance(SequenceBase, ())
+        
     view = View( Item('region_name', editor=EnumEditor(name = 'names'), label='Region name'),
                  Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider')),
-                 Item('width',  editor=RangeEditor(high_name = 'max_width', mode='slider'))
-               )
+                 Item('width', enabled_when = '_width_allowed', editor=RangeEditor(high_name = 'max_width', mode='slider'))
+               )    
+    
+    @on_trait_change('_sequence_base.solution_description')
+    def update_width_allowed(self):
+        self._width_allowed = 'width' in self._sequence_base.solution.adjustable
     
     @property
     def sym_scale(self):
@@ -532,6 +543,8 @@ class SequenceEnd(SingletonHasTraits):
     region_name = Str
     center = Range(-10.0, None, 10.0)
     width = Range(0.0, None, 10.0)
+    _width_allowed = Bool
+    _sequence_base = Instance(SequenceBase, ())
     
     sym_scale = SequenceBase().sym_scale
     asym_scale = SequenceBase().asym_scale
@@ -539,8 +552,24 @@ class SequenceEnd(SingletonHasTraits):
         
     view = View( Item('region_name', editor=EnumEditor(name = 'names'), label='Region name'),
                  Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider')),
-                 Item('width',  editor=RangeEditor(high_name = 'max_width', mode='slider'))
+                 Item('width', enabled_when = '_width_allowed', editor=RangeEditor(high_name = 'max_width', mode='slider'))
                )
+
+    @on_trait_change('_sequence_base.solution_description')
+    def update_width_allowed(self):
+        self._width_allowed = 'width' in self._sequence_base.solution.adjustable
+        
+    @property
+    def sym_scale(self):
+        return SequenceBase().sym_scale
+    
+    @property
+    def asym_scale(self):
+        return SequenceBase().asym_scale
+        
+    @property
+    def solution(self):
+        return SequenceBase().solution
                
     def _region_name_fired(self):
         limits = Chip().mapping.get_xlimits(self.region_name)

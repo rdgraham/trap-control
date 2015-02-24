@@ -1,4 +1,4 @@
-from solution import Solution
+from solution import Solution, CopyRegion
 
 class SandiaHoa2(Solution):
     for_traps = ('hoa2')
@@ -165,5 +165,48 @@ class SymMerge(Solution):
         self.base_solution = UWQuant(p)
         
     def interpolated_voltage_at(self, (x,y), region):
-        return self.base_solution.interpolated_voltage_at((x,y), region)
         
+        region.sub_electrode = True
+        left_region = CopyRegion(region)
+        right_region = CopyRegion(region)
+            
+        if region.width > 4:
+            left_region.center = region.center - region.width
+            right_region.center = region.center + region.width
+        
+            return  self.base_solution.interpolated_voltage_at((x,y), left_region) + \
+                    self.base_solution.interpolated_voltage_at((x,y), right_region)
+        else:
+            # linear interpolation to find the intermediate solution
+            
+            v_center = self.base_solution.interpolated_voltage_at((region.center,y), region)
+            
+            if abs(x-region.center) < region.width:
+            
+                left_region.center = region.center - 4
+                right_region.center = region.center + 4
+                v_seperated = self.base_solution.interpolated_voltage_at((x,y), left_region) + \
+                              self.base_solution.interpolated_voltage_at((x,y), right_region)
+            
+                gradient = (v_seperated - v_center) / 4.0
+                
+                return v_seperated - gradient * (4 - region.width)
+                #return region.width * gradient - v_seperated
+                
+                #return v_center
+            else:
+                left_region.center = region.center - region.width
+                right_region.center = region.center + region.width
+
+                # in the limit x=center need to scale down by .5 otherwise both solutions will add
+                # and voltages will be doubled                
+                if region.width < 4.0:
+                    multiplier = .5 + region.width / 8.0
+                else:
+                    multiplier = 1.0
+
+                return  multiplier * (self.base_solution.interpolated_voltage_at((x,y), left_region) + \
+                                      self.base_solution.interpolated_voltage_at((x,y), right_region))
+            
+            #gradient = (v_center - v_seperated) / 4.0
+            #return gradient * (4-region.width) + v_seperated

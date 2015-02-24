@@ -1,7 +1,7 @@
 (dp1
-S'TrapRegion.center'
+S'TrapRegion.width'
 p2
-F9.234
+F0
 sS'LasersPanel.region4'
 p3
 S'Q'
@@ -14,18 +14,15 @@ S'Q'
 sS'LasersPanel.region1'
 p6
 S'Q'
-sS'TrapRegion.sub_electrode'
-p7
-I01
 sS'chip.trap'
-p8
+p7
 Vhoa2
-p9
+p8
 sS'TrapRegion.name'
-p10
+p9
 S'Q'
 sS'TrapRegion.solution_description'
+p10
+S'Symmetric merge'
 p11
-S'UW Quantum Region Solution'
-p12
 s.
