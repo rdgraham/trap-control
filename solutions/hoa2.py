@@ -62,6 +62,37 @@ class SandiaRot45(Solution):
         voltage('Q', 8	, 0.007	, -.19, .85)
         voltage('Q', 9	, 0.004	, -.19, .85)
 
+class Wide(Solution):
+    for_traps = ('hoa2')
+    description = 'Wide solution'
+    uses_regions = ('Q')
+    adjustable = ('Sym scale', 'Asym scale')  #other controls disabled [todo]
+
+    def __init__(self, p):
+        Solution.__init__(self, p)
+        voltage = self.voltage
+        
+        # correct scale factor at 250V, 17 MHz should be about .19
+        voltage('Q', -9	, 0.004	, -.19, .85)
+        voltage('Q', -8	, 0.006	, -.19, .85)
+        voltage('Q', -7	, 0.010	, -.19, .85)
+        voltage('Q', -6	, 0.019	, -.19, .85)
+        voltage('Q', -5	, 0.037	, -.19, .85)
+        voltage('Q', -4	, 0.089	, -.19, .85)
+        voltage('Q', -3	, 0.266	, -.19, .85)
+        voltage('Q', -2	, 0.928	, -.19, .85)
+        voltage('Q', -1	, 1.587	, -.19, .85)
+        voltage('Q', 0	, -2.109, -.19, .85)
+        voltage('Q', 1	, -2.109, -.19, .85)
+        voltage('Q', 2	, 1.588	, -.19, .85)
+        voltage('Q', 3	, 0.930	, -.19, .85)
+        voltage('Q', 4	, 0.266	, -.19, .85)
+        voltage('Q', 5	, 0.090	, -.19, .85)
+        voltage('Q', 6	, 0.037	, -.19, .85)
+        voltage('Q', 7	, 0.019	, -.19, .85)
+        voltage('Q', 8	, 0.010	, -.19, .85)
+        voltage('Q', 9	, 0.007	, -.19, .85)
+
 class UWQuant(Solution):
     for_traps = ('hoa2')
     description = 'UW Quantum Region Solution'
