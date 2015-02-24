@@ -118,6 +118,9 @@ class Chip(SingletonHasTraits):
         
         SequenceBase().solution_descriptions = available_solutions
         SequenceBase().solution_description = SettingLoader('SequenceBase.solution_description', available_solutions[0])()
+        SequenceBase()._solution_changed()
+        SequenceStart().update_width_allowed()
+        SequenceEnd().update_width_allowed()
         
         to_save['chip.trap'] = self.trap
 
@@ -483,11 +486,17 @@ class SequenceBase(SingletonHasTraits):
             print 'Solution with description '+self.solution_description+' not found'
 
     @on_trait_change('solution_description')
-    def _update_width_enabled(self):
-        "Disable width is not allowed by solution"
+    def _solution_changed(self):
         
+        #Update regions
+        SequenceStart()._region_name_fired()
+        SequenceEnd()._region_name_fired()
+        
+        #Disable width if not allowed by solution
         self._width_allowed = 'width' in self.solution.adjustable
-
+        
+        to_save['SequenceBase.solution_description'] = self.solution_description
+        
 class SequenceStart(SingletonHasTraits):
 
     min_center = Float
