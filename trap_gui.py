@@ -157,7 +157,7 @@ class SolutionPlotUpdater(threading.Thread):
         solution = ManualPanel().trap_region.solution
         
         limits = Chip().mapping.get_xlimits(cp.manual_panel.trap_region.name)
-        xvals = np.linspace( limits[0], limits[1], num=1+limits[1]-limits[0] )
+        xvals = np.linspace( limits[0], limits[1], num=limits[1]-limits[0] )
         
         if self._stop.is_set(): return #terminate thread now if asked
         
@@ -189,6 +189,7 @@ class SolutionPlotUpdater(threading.Thread):
         ax.add_patch(Rectangle((limits[0],-10),limits[1]-limits[0],20, facecolor='.9', edgecolor='black'))
         ax.set_xticks( np.arange(limits[0], limits[1]) )
         
+        ax.set_xlim(limits)
         ax.grid(True)
         ax.set_ylabel('Voltage (V)')
         ax.set_xlabel('Position')
