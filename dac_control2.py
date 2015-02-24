@@ -463,14 +463,16 @@ class DacController(object):
         #    return
         #solution = solution_class(None) ## TODO: pass in trap parameters somehow
         
-        delta = (end.center - start.center) / float(steps)
+        delta_center = (end.center - start.center) / float(steps)
+        delta_width = (end.width - start.width) / float(steps)
         for step in range(steps):
             
             # at each position, build an object confirming to the TrapRegion specification
             # that can be passed in to the solution to get the voltage
             trap_region = lambda : None
             trap_region.name = start.region_name  ## TODO: support multiple regions somehow
-            trap_region.center = start.center + step * delta
+            trap_region.center = start.center + step * delta_center
+            trap_region.width = start.width + step * delta_width
             trap_region.sym_scale = start.sym_scale
             trap_region.asym_scale = start.asym_scale
             trap_region.solution = start.solution

@@ -43,13 +43,13 @@ class Solution(object):
             self._offsets.append( -1.0 * offset)
             self._voltages.append( (sym, asym1, asym2) )
             
-    def laser_voltage_at(self, region, position):
-        if not region in self._laser_regions:
+    def laser_voltage_at(self, region_name, position):
+        if not region_name in self._laser_regions:
             print 'Required laser voltage unknown at this position'
             return 0
         
         # TODO: support multiple dimensions
-        indices = [i for i in range(len(self._laser_positions)) if self._laser_regions[i] == region]
+        indices = [i for i in range(len(self._laser_positions)) if self._laser_regions[i] == region_name]
         positions = np.array([self._laser_positions[i] for i in indices])
         voltages = np.array([self._laser_voltages[i][0] for i in indices])
         order = np.argsort(positions)
@@ -141,7 +141,11 @@ class Solution(object):
         
     def solution_info(self, region):
         return {}
-
+        
+    def wells(self, trap_region):
+        "Returns a list of tuples giving the region name and position of any potential wells in the solution"
+        # Default version, for single well, returns center
+        return [(trap_region.region_name, trap_region.center)]
 
 class CopyRegion(object):
     """ This is a convienence class. It will make a copy of a TrapRegion,

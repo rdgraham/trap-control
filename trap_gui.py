@@ -518,6 +518,13 @@ class SequenceStart(SingletonHasTraits):
     def update_width_allowed(self):
         self._width_allowed = 'width' in self._sequence_base.solution.adjustable
     
+    # TODO: Change everything else to use region_name
+    @property
+    def name(self):
+        # This is a work-around
+        if self.region_name == '': self.region_name = self.names[0]
+        return self.region_name
+    
     @property
     def sym_scale(self):
         return SequenceBase().sym_scale
@@ -567,6 +574,13 @@ class SequenceEnd(SingletonHasTraits):
     @on_trait_change('_sequence_base.solution_description')
     def update_width_allowed(self):
         self._width_allowed = 'width' in self._sequence_base.solution.adjustable
+    
+    # TODO: Change everything else to use region_name
+    @property
+    def name(self):
+        # This is a work-around
+        if self.region_name == '': self.region_name = self.names[0]
+        return self.region_name
         
     @property
     def sym_scale(self):
@@ -599,12 +613,14 @@ class SequenceRun(SingletonHasTraits):
     return_to_start = Bool
     steps = Range(1,100)
     move_lasers = Bool
+    cooling_time = Range(100,1000)
     move_camera = Bool
     run = Button('Run')
     
     view = View( Item('steps', label='Number of steps'),
                  Item('return_to_start', label='Return to start'),
                  Item('move_lasers', label='Move lasers to end'),
+                 Item('cooling_time', label='Cooling time (ms)'),
                  Item('move_camera', label='Move camera to end'),
                  Item('run', show_label=False)
                 )
@@ -617,20 +633,30 @@ class SequenceRun(SingletonHasTraits):
                 ' in ', self.steps, 'steps'
         
         cp = ControlPanel()
-        #solution_class = solutions.get_from_description( cp.trap_region.solution )
-        #if solution_class is None: return
-        #solution = solution_class( cp.parameters )
         
         c = dac_control.DacController(Devices().dac_driver, Chip().mapping)
         # TODO: implement clear beforehand
 
-        sequence = c.build_sequence( SequenceStart(),
-                                     SequenceEnd(),
+        start_region = SequenceStart()
+        end_region = SequenceEnd()
+        sequence = c.build_sequence( start_region,
+                                     end_region,
                                      self.steps, 
                                      return_to_start = self.return_to_start )
         
         c.driver.write_frames(sequence)
         
+        if self.move_lasers:
+            wells = end_region.solution.wells(end_region)
+
+            driver = lasers.Driver( Devices().lasers_driver_name )
+            driver.set_solution( end_region.solution )
+            driver.clear_all()
+            driver.set_cooling_time(self.cooling_time)
+            for region, position in wells:
+                #print 'Putting a cooling location at', region, position
+                driver.add_position(region, position)
+
 class SequencePanel(SingletonHasTraits):
     
     sequence_base  = Instance(SequenceBase  , ())

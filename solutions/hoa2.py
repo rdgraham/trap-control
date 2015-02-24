@@ -162,10 +162,21 @@ class SymMerge(Solution):
     adjustable = ('Sym scale', 'width')
     
     def __init__(self, p):
+        Solution.__init__(self, p)
+        
         self.base_solution = UWQuant(p)
         
+        self.laser('Q', 0  , [.1]  )
+        self.laser('Q', 19 , [3.1] )
+    
+    def wells(self, region):
+        if region.width <= 4:
+            return [(region.name, region.center)]
+        elif region.width > 4:
+            return [ (region.name, region.center - region.width) ,
+                     (region.name, region.center + region.width) ]
+    
     def interpolated_voltage_at(self, (x,y), region):
-        
         region.sub_electrode = True
         left_region = CopyRegion(region)
         right_region = CopyRegion(region)
@@ -178,7 +189,6 @@ class SymMerge(Solution):
                     self.base_solution.interpolated_voltage_at((x,y), right_region)
         else:
             # linear interpolation to find the intermediate solution
-            
             v_center = self.base_solution.interpolated_voltage_at((region.center,y), region)
             
             if abs(x-region.center) < region.width:
