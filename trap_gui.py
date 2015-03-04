@@ -63,6 +63,7 @@ class Parameters(SingletonHasTraits):
 class Devices(SingletonHasTraits):
     #dac_driver = String('LPT/0xCD00')
     dac_driver = String('nul')
+    dac_print_output = Bool(False)
     counter_driver_name = String('nul')
     lasers_driver_name = String('nul')
     
@@ -639,10 +640,9 @@ class SequenceRun(SingletonHasTraits):
 
         start_region = SequenceStart()
         end_region = SequenceEnd()
-        sequence = c.build_sequence( start_region,
-                                     end_region,
-                                     self.steps, 
-                                     return_to_start = self.return_to_start )
+        sequence = c.build_sequence( start_region, end_region, self.steps, 
+                                     return_to_start = self.return_to_start,
+                                     print_output = Devices().dac_print_output )
         
         c.driver.write_frames(sequence)
         
@@ -767,7 +767,7 @@ class ManualPanel(SingletonHasTraits):
                             Item('update_electrodes', show_label=False),
                             Item('update_lasers', show_label=False),
                             Item('update_electrodes_and_lasers', show_label=False),
-                            label='Update'
+                            label='Update',
                         ),
                     ),
                )
@@ -795,7 +795,7 @@ class ManualPanel(SingletonHasTraits):
         cp = ControlPanel()
         c = dac_control.DacController(Devices().dac_driver, Chip().mapping)
         
-        frames = c.build_single(cp.manual_panel.trap_region)
+        frames = c.build_single(cp.manual_panel.trap_region, print_output=Devices().dac_print_output)
         c.driver.write_frames(frames)
        
 class ControlPanel(SingletonHasTraits):

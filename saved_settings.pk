@@ -1,29 +1,35 @@
 (dp1
-S'LasersPanel.region4'
+S'TrapRegion.center'
 p2
-S'Q'
-sS'LasersPanel.region3'
+F9
+sS'LasersPanel.region4'
 p3
 S'Q'
-sS'LasersPanel.region2'
+sS'LasersPanel.region3'
 p4
 S'Q'
-sS'LasersPanel.region1'
+sS'LasersPanel.region2'
 p5
 S'Q'
-sS'chip.trap'
+sS'LasersPanel.region1'
 p6
-Vhoa2
+S'Q'
+sS'TrapRegion.sub_electrode'
 p7
-sS'TrapRegion.name'
+I01
+sS'chip.trap'
 p8
+Vhoa2
+p9
+sS'TrapRegion.name'
+p10
 S'Q'
 sS'TrapRegion.solution_description'
-p9
-S'Symmetric merge'
-p10
-sS'SequenceBase.solution_description'
 p11
-S'Symmetric merge'
+S'UW Quantum Region Solution'
 p12
+sS'SequenceBase.solution_description'
+p13
+S'Symmetric merge'
+p14
 s.

@@ -412,7 +412,7 @@ class DacController(object):
         if write: self.driver.write_frame( [11<<16 | data]*3 )
         return [11<<16 | data]*3
 
-    def build_single( self, region, interpolate=True ):
+    def build_single( self, region, interpolate=True, print_output=False ):
         """ Returns a list of frames to setup a trapping potential at a given physical position.
         
             This does the conversion from physical positions along the x axis of the trap region to the relevant
@@ -434,12 +434,12 @@ class DacController(object):
             potentials[electrode] = voltage
             if DEBUG : print 'Will set electrode '+electrode+' = '+str(voltage)
 
-        frames_to_write = []        
-        frames_to_write = self.update(potentials) 
+        frames_to_write = []
+        frames_to_write = self.update(potentials, print_output=print_output)
         frames_to_write = frames_to_write + frames_to_write
         return frames_to_write
         
-    def build_sequence( self, start, end, steps, return_to_start = False):
+    def build_sequence( self, start, end, steps, return_to_start = False, print_output=False):
         """ Returns a list of frames for a sequence operation from start to end in a given number of steps.
             
             This does the conversion from physical positions along the x axis of the trap region to the relevant
@@ -466,6 +466,7 @@ class DacController(object):
         delta_center = (end.center - start.center) / float(steps)
         delta_width = (end.width - start.width) / float(steps)
         for step in range(steps):
+            if print_output: print 'Building potentials step', step, 'in a sequence of', steps
             
             # at each position, build an object confirming to the TrapRegion specification
             # that can be passed in to the solution to get the voltage
@@ -486,7 +487,7 @@ class DacController(object):
                 potentials[electrode] = voltage
                 
             # get the raw data required to update previous solution to current
-            new_frames = self.update(potentials, write = False)
+            new_frames = self.update(potentials, write = False, print_output=print_output)
             frames_to_write = frames_to_write + new_frames + new_frames #need to write twice
         
         if return_to_start:
@@ -494,7 +495,7 @@ class DacController(object):
         
         return frames_to_write
         
-    def update( self, raw_updates, write = True ):
+    def update( self, raw_updates, write = True, print_output = False ):
         """Returns the sequence of data frames to write in order to update the DAC given raw_updates.
            raw_updates is a dictionary with the keys the electrodes and values the voltages.
            
@@ -517,7 +518,7 @@ class DacController(object):
                 # Update voltage state and remove redundant updates
                 volts = self.a_voltages if not self.output_a else self.b_voltages
                 if (not electrode in volts) or volts[electrode] != v:
-                    if DEBUG:
+                    if DEBUG or print_output:
                         print( 'Updating electrode %s %s to %f V' % (electrode, self.trap.electrode_info[electrode]  ,  v) )
                     volts[ electrode ] = v
                     updates.append( (electrode, v) )
