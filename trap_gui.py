@@ -1,4 +1,5 @@
 import threading
+import time
 from time import sleep
 
 import wxversion
@@ -10,7 +11,7 @@ from traitsui.api import View, Item, Group, VGroup, HSplit, Handler, EnumEditor,
 from traitsui.menu import NoButtons
     
 from matplotlib.figure import Figure
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Circle
 
 from mpl_editor import MPLFigureEditor
 
@@ -18,11 +19,14 @@ from scipy import *
 from scipy.stats import norm
 
 import cPickle as pickle
+import cStringIO as StringIO
 import numpy as np
 import numbers
 import wx
 import sys
 import matplotlib
+
+import rpyc
 
 import switches
 import solutions
@@ -67,10 +71,15 @@ class Devices(SingletonHasTraits):
     counter_driver_name = String('nul')
     lasers_driver_name = String('nul')
     
+    camera_server = String('nul')
+    camera_port = Int(0)
+    
     _dac_driver_default          = lambda self : SettingLoader('devices.dac_driver', 'nul')()
     _counter_driver_name_default = lambda self : SettingLoader('devices.counter_driver_name', 'nul')()
     _lasers_driver_name_default  = lambda self : SettingLoader('devices.lasers_driver_name', 'nul')()
-    @on_trait_change('dac_driver,counter_driver_name,lasers_driver_name')
+    _camera_server_default = lambda self : SettingLoader('devices.camera_server', 'localhost')()
+    _camera_port_default = lambda self : SettingLoader('devices.camera_port', 18861 )()
+    @on_trait_change('dac_driver,counter_driver_name,lasers_driver_name,camera_server,camera_port')
     def handler(self, name, new):
         to_save['devices.'+name] = new
     
@@ -386,6 +395,111 @@ class PhotonsPlotUpdater(threading.Thread):
             else:
                 self.update_lines()
             sleep(.05)
+        
+class CameraDisplayUpdater(threading.Thread):
+    """ Update the camera display """
+    
+    _instance = None
+    
+    def __init__(self, address, port, frame_rate):
+        super(CameraDisplayUpdater, self).__init__()
+        
+        print 'Initilized camera update thread'
+        
+        self.address = address
+        self.port = port
+        self.frame_rate = frame_rate
+        
+        self._stop = threading.Event()
+        self.cp = ControlPanel()
+        self.dp = DisplayPanel()
+        self.update_all = True
+        self.ax = self.dp.camera_figure.axes[0]    
+        
+        self.background = None    
+    
+        try:
+            self.conn = rpyc.connect(self.address, self.port, config = {"allow_public_attrs" : True, \
+                                                                        "allow_pickle" : True})
+            self.server = self.conn.root
+            #self.server = CameraConnectionInterface().root
+        except:
+            errormsg = 'Unable to connect to camera server at ' + self.address + ':' + str(self.port) + '\n' \
+                       'Start server and re-enable display updating'
+            print errormsg
+            self.ax.clear()
+            self.ax.text(0.5, 0.5, errormsg, horizontalalignment='center', verticalalignment='center', transform=self.ax.transAxes)
+            wx.CallAfter(self.dp.camera_figure.canvas.draw)
+            self.stop()
+    
+    def __new__(cls, *args, **kwargs):
+        # make class a singelton
+        if not cls._instance:
+            cls._instance = super(CameraDisplayUpdater, cls).__new__(
+                                cls, *args, **kwargs)
+        return cls._instance
+    
+    def stop(self):
+        print 'Stop camera update forced'
+        self.conn.close()
+        self._stop.set()
+
+    def stopped(self):
+        return self._stop.isSet()
+        
+    def update_plot(self):
+        """Fully update the plot"""
+        
+        self.ax.clear()
+        data = np.load(StringIO.StringIO(self.server.binary_image()))  
+        self.image = self.ax.imshow(data)
+    
+        #for roi in self.server.roi_list():
+        #    print 'draw circle for roi at ', roi[0], roi[1], roi[2]
+        self.circle_artists = [self.ax.add_artist( Circle( (roi[0], roi[1]), roi[2], color='r', fill=False ) ) for roi in self.server.roi_list()]
+            #self.circles = self.ax.plot( roi[0], roi[1], 'b.' )
+        
+        self.update_all = False
+        #wx.CallAfter(self.dp.camera_figure.canvas.draw)
+            
+    def _draw_only_image(self):
+        
+        self.dp.camera_figure.canvas.restore_region(self.background)
+        try:
+            self.ax.draw_artist(self.image)
+        except RuntimeError:
+            pass
+        
+        for artist in self.circle_artists:
+            self.ax.draw_artist(artist)
+            
+        self.dp.camera_figure.canvas.blit(self.ax.bbox)
+        
+    def update_data(self):
+        """Only update the plot data. Won't rescale the plot"""
+        
+        if self.background == None:            
+            wx.CallAfter(self.dp.camera_figure.canvas.draw)
+            sleep(.1) #sometimes initial call to draw won't have finished yet
+            self.background = self.dp.camera_figure.canvas.copy_from_bbox(self.ax.bbox) 
+        try:
+            data = np.load(StringIO.StringIO(self.server.binary_image()))
+            self.image.set_data(data)
+            wx.CallAfter( self._draw_only_image )
+        except EOFError:
+            pass
+        
+    def run(self):
+        while not self._stop.is_set():
+            start = time.time()
+            if self.update_all:
+                self.update_plot()
+            else:
+                self.update_data()
+            
+            # take into account that drawing takes some time ...
+            while time.time()-start < 1.0 / self.frame_rate:
+                sleep(.01)
             
 class SwitchPanel(HasTraits):
     
@@ -707,8 +821,13 @@ class AcquisitionPanel(SingletonHasTraits):
     
     count_period = Float()
     frame_rate = Float()
-    
+    em_gain = Float()
     counting = Bool()
+    update_camera = Bool()
+    manual_roi = Bool()
+    roi_x = Float()
+    roi_y = Float()
+    roi_r = Float()
     
     view = View( Group( 
                     Group(
@@ -716,14 +835,57 @@ class AcquisitionPanel(SingletonHasTraits):
                         label = 'Photon counting',
                         ),
                     Group(
-                        Item('frame_rate'),
-                        label = 'Imaging',
-                        ) 
-                    )   
+                        Item('update_camera', label='Update display'),
+                        Item('frame_rate', label='Frames / sec'),
+                        Item('em_gain', label='EM gain'),
+                        label = 'Imaging'
+                        ),
+                    Group(
+                        Item('manual_roi', label='Set manual ROI'),
+                        Item('roi_x', label='Horozontal center'),
+                        Item('roi_y', label='Vertical center'),
+                        Item('roi_r', label='Radius'),
+                        label = 'Region of interest'
+                        )
+                    )
                 )
     
+    # Load and save all the settings for the camera
+    _frame_rate_default       = lambda self : SettingLoader('acqusition.camera.frame_rate', 1)()
+    _em_gain_default          = lambda self : SettingLoader('acqusition.camera.em_gain', 0)()
+    @on_trait_change('frame_rate, em_gain')
+    def save_camera_settings(self, name, new):
+        to_save['acqusition.camera.'+name] = new
+    
+    @on_trait_change('update_camera')
+    def camera_handler(self, name, state):
+        try:
+            if state:
+                address = Devices().camera_server
+                port = Devices().camera_port
+                self._camera_update_thread = CameraDisplayUpdater(address, port, self.frame_rate)
+                self._camera_update_thread.start()
+            else:
+                self._camera_update_thread.stop()
+
+        except AttributeError:
+            pass
+    
+    @on_trait_change('manual_roi,roi_x,roi_y,roi_r')
+    def roi_handler(self, name, state):
+        print 'Sending updated ROI to server'
+        conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
+        if self.manual_roi:
+            conn.root.set_roi('manual', self.roi_x, self.roi_y, self.roi_r)
+        else:
+            conn.root.clear_roi()
+        conn.close()
+        
+        # also need to trigger a full update of the plot so the circles can be drawn
+        CameraDisplayUpdater._instance.update_all = True
+    
     @on_trait_change('counting')
-    def handler(self, name, state):
+    def counting_handler(self, name, state):
         if state:
             print 'Starting counter task ' + Devices().counter_driver_name
             
@@ -816,6 +978,13 @@ class DisplayPanel(SingletonHasTraits):
     solution_info = Str(font='courier')
     photons_figure = Instance(Figure)
     photons_plot_autoscale = Button('Auto-scale')
+    camera_figure = Instance(Figure)
+    camera_autoscale = Button('Auto-scale')
+    
+    def _camera_figure_default(self):
+        figure = Figure()
+        ax = figure.add_axes([0.08, 0.1, 0.9, 0.85])
+        return figure
     
     def _photons_figure_default(self):
         figure = Figure()
@@ -839,6 +1008,10 @@ class DisplayPanel(SingletonHasTraits):
                         Item('photons_figure', editor=MPLFigureEditor(), dock='vertical', height=.95, show_label=False),
                         Item('photons_plot_autoscale', height=.05, show_label=False),
                         label='Photons'),
+                    Group(
+                        Item('camera_figure', editor=MPLFigureEditor(), dock='vertical', height=.95, show_label=False),
+                        Item('camera_autoscale', height=.05, show_label=False),
+                        label='Camera'),
                     layout='tabbed', springy=True
                     )
                 )
