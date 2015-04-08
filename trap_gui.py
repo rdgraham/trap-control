@@ -856,6 +856,13 @@ class AcquisitionPanel(SingletonHasTraits):
     @on_trait_change('frame_rate, em_gain')
     def save_camera_settings(self, name, new):
         to_save['acqusition.camera.'+name] = new
+        try:
+            conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
+            if name is 'frame_rate' : conn.root.set_frame_rate(new)
+            if name is 'em_gain' : conn.root.set_gain(new)
+            conn.close()
+        except:
+            print 'Connection to camera lost. Can not set '+name
     
     @on_trait_change('update_camera')
     def camera_handler(self, name, state):
@@ -867,14 +874,18 @@ class AcquisitionPanel(SingletonHasTraits):
                 self._camera_update_thread.start()
             else:
                 self._camera_update_thread.stop()
-
         except AttributeError:
             pass
     
     @on_trait_change('manual_roi,roi_x,roi_y,roi_r')
     def roi_handler(self, name, state):
+        try:
+            conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
+        except:
+            print 'Can not connect to camera server to set roi'
+            return
+            
         print 'Sending updated ROI to server'
-        conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
         if self.manual_roi:
             conn.root.set_roi('manual', self.roi_x, self.roi_y, self.roi_r)
         else:

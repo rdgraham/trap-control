@@ -91,8 +91,9 @@ class CameraService(rpyc.Service):
     def exposed_set_gain(self, gain):
         self.luca.set_gain(gain)
         
-    def exposed_set_exposure(self, exposure):
-        self.luca.set_exposure(exposure)
+    def exposed_set_frame_rate(self, frame_rate):
+        self.luca.set_exposure(1.0/frame_rate)
+    
 
 class Luca( object ):
     
