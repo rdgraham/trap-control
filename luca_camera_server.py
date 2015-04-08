@@ -13,12 +13,20 @@ class CameraService(rpyc.Service):
 
     all_roi = {}
     image = None
+    luca = None
 
-    def __init__(self):
-        
-        print 'Starting Andor LUCA camera driver'
+    @classmethod
+    def backend_init(cls):
+        print 'Starting Andor LUCA camera driver ...'
         self.luca = Luca()
         self.luca.start_acquiring(callback = CameraService().got_image)
+        print '[OK]'
+    
+    @classmethod
+    def backend_terminate(cls):
+        print 'Terminating Andor LUCA camera driver ...'
+        self.luca.shutdown()
+        print '[OK]'
 
     def got_image(self, image_data):
         image = image_data.astype('f')

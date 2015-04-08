@@ -1,10 +1,21 @@
 import rpyc
 import numpy as np
 import cStringIO as StringIO
+from rpyc.utils.server import ThreadedServer
 
-class CameraService(rpyc.Service):       
+class CameraService(rpyc.Service):
 
     all_roi = {}
+    
+    backend = None
+    
+    @classmethod
+    def backend_init(cls):
+        print 'Initilizing backend'
+    
+    @classmethod
+    def backend_terminate(cls):
+        print 'Terminating backend'
 
     def exposed_binary_image(self):
         print 'Returning camera image'
@@ -56,7 +67,8 @@ if __name__ == "__main__":
     
     print 'Starting fake camera service'
 
-    from rpyc.utils.server import ThreadedServer
+    CameraService.backend_init()
     t = ThreadedServer( CameraService, port = 18861, protocol_config = {"allow_public_attrs" : True, \
                                                                         "allow_pickle" : True})
     t.start()
+    CameraService.backend_terminate()
