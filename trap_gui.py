@@ -12,6 +12,7 @@ from traitsui.menu import NoButtons
     
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle, Circle
+from matplotlib.text import Text
 from matplotlib import cm
 
 from mpl_editor import MPLFigureEditor
@@ -447,7 +448,14 @@ class CameraDisplayUpdater(threading.Thread):
 
     def stopped(self):
         return self._stop.isSet()
-        
+    
+    def roi_label_position(self, roi):
+        x,y,r = self.server.get_roi(roi)
+        if y-r > 0 : 
+            return (x,y-r)
+        else :
+            return (x,y+r)
+    
     def update_plot(self):
         """Fully update the plot"""
         
@@ -459,7 +467,6 @@ class CameraDisplayUpdater(threading.Thread):
         #    print 'draw circle for roi at ', roi[0], roi[1], roi[2]
         self.circle_artists = [self.ax.add_artist( Circle( (roi[0], roi[1]), roi[2], color='g', fill=False ) ) for roi in self.server.roi_list()]
             #self.circles = self.ax.plot( roi[0], roi[1], 'b.' )
-        
         self.update_all = False
         #wx.CallAfter(self.dp.camera_figure.canvas.draw)
             
@@ -471,9 +478,16 @@ class CameraDisplayUpdater(threading.Thread):
         except RuntimeError:
             pass
         
+        self.label_artists = [self.ax.add_artist( \
+                                Text(x=self.roi_label_position(roi)[0], y=self.roi_label_position(roi)[1], color='g', backgroundcolor='w', \
+                                     text=str(self.server.roi_stats(roi)['mean'] )) \
+                             ) for roi in self.server.roi_names()]
+        
         for artist in self.circle_artists:
             self.ax.draw_artist(artist)
-            
+        for artist in self.label_artists:
+            self.ax.draw_artist(artist)
+        
         self.dp.camera_figure.canvas.blit(self.ax.bbox)
         
     def update_data(self):
@@ -893,7 +907,7 @@ class AcquisitionPanel(SingletonHasTraits):
         if self.manual_roi:
             conn.root.set_roi('manual', self.roi_x, self.roi_y, self.roi_r)
         else:
-            conn.root.clear_roi()
+            conn.root.delete_roi('manual')
         conn.close()
         
         # also need to trigger a full update of the plot so the circles can be drawn

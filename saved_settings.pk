@@ -1,32 +1,29 @@
 (dp1
-S'acqusition.camera.em_gain'
+S'LasersPanel.region4'
 p2
-F1
-sS'LasersPanel.region4'
-p3
 S'Q'
 sS'LasersPanel.region3'
-p4
+p3
 S'Q'
 sS'LasersPanel.region2'
-p5
+p4
 S'Q'
 sS'LasersPanel.region1'
-p6
+p5
 S'Q'
 sS'chip.trap'
-p7
+p6
 Vhoa2
-p8
+p7
 sS'TrapRegion.name'
-p9
+p8
 S'Q'
 sS'TrapRegion.solution_description'
+p9
+S'Symmetric merge'
 p10
-S'Symmetric merge'
-p11
 sS'SequenceBase.solution_description'
-p12
+p11
 S'Symmetric merge'
-p13
+p12
 s.

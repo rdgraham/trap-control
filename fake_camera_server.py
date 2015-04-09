@@ -38,7 +38,7 @@ class CameraService(rpyc.Service):
     def exposed_image_stats(self):
         return None
     
-    def circular_mask(index,radius,array):
+    def circular_mask(self, index,radius,array):
         a,b = index
         nx,ny = array.shape
         y,x = np.ogrid[-a:nx-a,-b:ny-b]
@@ -49,12 +49,18 @@ class CameraService(rpyc.Service):
         image = (256*np.random.rand(1000, 1000)).astype(np.uint8)
         
         roi = self.all_roi[roi_name]
-        mean = np.mean( image * circular_mask( (roi[0], roi[1]), roi[2], image ) )
+        mean = np.mean( image * self.circular_mask( (roi[0], roi[1]), roi[2], image ) )
         return {'mean' : mean}
         
     #return(sum(array[mask]))
     def exposed_clear_roi(self):
         self.all_roi = {}
+    
+    def exposed_delete_roi(self, name):
+        try:
+            del self.all_roi[name]
+        except KeyError:
+            pass
         
     def exposed_set_roi(self, roi_name, x, y, r):
         print 'Adding or changing roi named : ', roi_name
@@ -62,6 +68,12 @@ class CameraService(rpyc.Service):
     
     def exposed_roi_list(self):
         return self.all_roi.values()
+    
+    def exposed_roi_names(self):
+        return self.all_roi.keys()
+    
+    def exposed_get_roi(self,name):
+        return self.all_roi[name]
         
 if __name__ == "__main__":
     
