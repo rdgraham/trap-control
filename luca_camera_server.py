@@ -1,7 +1,7 @@
 import rpyc
 import numpy as np
 import cStringIO as StringIO
-
+import time
 from ctypes import *
 from ctypes.wintypes import HANDLE
 import win32event
@@ -14,37 +14,50 @@ class CameraService(rpyc.Service):
     all_roi = {}
     image = None
     luca = None
+    scale_min = None
+    scale_max = None
 
     @classmethod
     def backend_init(cls):
+        cls.image = np.zeros((1000, 1000))
         print 'Starting Andor LUCA camera driver ...'
-        self.luca = Luca()
-        self.luca.start_acquiring(callback = CameraService().got_image)
-        print '[OK]'
+        cls.luca = Luca()
+        print '[Initilized OK]'
+        cls.luca.start_acquiring(callback = CameraService.got_image)
+        print '[Acquiring OK]'
     
     @classmethod
     def backend_terminate(cls):
         print 'Terminating Andor LUCA camera driver ...'
-        self.luca.shutdown()
+        cls.luca.shutdown()
         print '[OK]'
-
-    def got_image(self, image_data):
-        image = image_data.astype('f')
-
-    def exposed_terminate(self):
-        self.luca.stop_acquiring()
-        self.luca.shutdown()
+    
+    @classmethod
+    def got_image(cls, image_data):
+        print 'Got image'
+        cls.image = image_data.astype('f')
 
     def exposed_autoscale(self):
-        pass
+        print 'Client requested autoscale. Now max', self.scale_max, 'min', self.scale_min
+        self.autoscale()
+        
+    def autoscale(self):
+        try:
+            self.scale_min = np.min(self.image)
+            self.scale_max = np.max(self.image)        
+        except TypeError:
+            self.scale_min = 0
+            self.scale_max = 100
         
     def exposed_setbg(self):
         pass
     
-    def exposed_binary_image(self):
-        print 'Returning camera image'
+    def exposed_scaled_image(self):
+        if self.scale_min is None or self.scale_max is None:
+            # Auto scale never set, determine automatically
+            self.autoscale()
         
-        image_to_send = (256*self.image).astype(np.uint8)
+        image_to_send = (256* (self.image-self.scale_min)/(self.scale_max-self.scale_min)).astype(np.uint8)
         
         # need to make a copy in some way on the server side otherwise
         # it will be really slow as synchronizing object across socket
@@ -54,6 +67,10 @@ class CameraService(rpyc.Service):
         np.save(temp, image_to_send)
         binary = temp.getvalue()
         temp.close()
+        
+        #print 'Original image : mean', np.average(self.image), 'shape', np.shape(self.image)
+        print 'Returning scaled image to client ', np.min(image_to_send), np.max(image_to_send), np.min(self.image), np.max(self.image)
+        
         return binary
     
     def exposed_about(self):
@@ -89,12 +106,13 @@ class CameraService(rpyc.Service):
         return self.all_roi.values()
 
     def exposed_set_gain(self, gain):
+        print 'Client requested gain change : ', gain
         self.luca.set_gain(gain)
         
     def exposed_set_frame_rate(self, frame_rate):
+        print 'Client requested frame rate change : ', frame_rate
         self.luca.set_exposure(1.0/frame_rate)
     
-
 class Luca( object ):
     
     atmcd = windll.atmcd32d
@@ -109,8 +127,15 @@ class Luca( object ):
     
     def __init__(self):
 
+        self.acquiring = False
+        self.event = None
+        
         he = self._handle_error
         
+        self.bin_size = 1
+        self.exposure_time = 1
+        self.callback = None
+    
         try:
             camera_handle, ncameras = c_long( 0 ), c_long( 0 )
             he( self.atmcd.GetAvailableCameras( byref(ncameras) ), "GetAvailableCameras" )
@@ -148,20 +173,13 @@ class Luca( object ):
             he( self.atmcd.SetVSSpeed( c_long( num_vs_speeds.value-1 ) ), "SetVSSpeed" )
             
             he( self.atmcd.SetKineticCycleTime( c_float(0.) ), "SetKineticCycleTime" )
-            self.set_gain_and_exposure()
+            self.set_gain(1)
+            self.set_exposure(1)
+            
         except ValueError as exc:
             print exc
-            
-        self.acquiring = False
-        self.event = None
-        
-        self.exposure_time = 0.2
-        self.EMCCD_gain = 1
-        self.bin_size = 1
                         
     def set_gain( self, gain ):
-        self.gain = gain
-        
         if self.acquiring: 
             return False
             
@@ -174,8 +192,6 @@ class Luca( object ):
         return True
     
     def set_exposure( self, exposure_time ):
-        self.exposure_time = exposure_time
-        
         if self.acquiring: 
             return False
             
@@ -185,6 +201,9 @@ class Luca( object ):
         except ValueError as exc:
             print exc
             return False
+        
+        self.exposure_time = exposure_time
+        
         return True
         
     def set_image_and_binning( self ):
@@ -206,6 +225,7 @@ class Luca( object ):
         except ValueError as exc:
             print exc
             return False
+
         return True
         
     def _acquire( self, callback ):
@@ -221,7 +241,7 @@ class Luca( object ):
             npixels = self.width*self.height
             image = self.image.ctypes.data_as( POINTER(c_uint16) )
             while self.acquiring:
-                win32event.WaitForSingleObject( self.event, 1000 )
+                win32event.WaitForSingleObject( self.event, 5000 )
                 he( self.atmcd.GetMostRecentImage16( image, c_long(npixels) ), "GetMostRecentImage16" )
                 if callback:    callback( self.image )
                 
@@ -237,17 +257,27 @@ class Luca( object ):
             self.event = None
             
     def start_acquiring( self, callback = None ):
+        if callback is None:
+            callback = self.callback
+        else:
+            self.callback = callback
+        
         if self.acquiring or self.event:
+            print 'Not able to start acqusition thread'
             return
+        
         self.thread = Thread(target=self._acquire, args=(callback,))
         self.thread.start()
+        print 'Started acqusition thread'
             
     def stop_acquiring( self, join = False ):
         self.acquiring = False
         if join:
             self.thread.join()
+        #time.sleep(self.exposure_time)
         
     def shutdown( self ):
+        self.acquiring = False
         he = self._handle_error
         try:                
             print "Shutting down Andor."
@@ -268,7 +298,9 @@ if __name__ == "__main__":
     port = 18861
     
     print 'Starting Andor LUCA camera rpyc service on port ' + str(port)
-
+    
+    CameraService.backend_init()
     t = ThreadedServer( CameraService, port = port, protocol_config = {"allow_public_attrs" : True, \
                                                                        "allow_pickle" : True})
     t.start()
+    CameraService.backend_terminate()

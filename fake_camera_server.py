@@ -17,7 +17,7 @@ class CameraService(rpyc.Service):
     def backend_terminate(cls):
         print 'Terminating backend'
 
-    def exposed_binary_image(self):
+    def exposed_scaled_image(self):
         print 'Returning camera image'
         background = (256*np.random.rand(1000, 1000)).astype(np.uint8)
         

@@ -12,6 +12,7 @@ from traitsui.menu import NoButtons
     
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle, Circle
+from matplotlib import cm
 
 from mpl_editor import MPLFigureEditor
 
@@ -451,12 +452,12 @@ class CameraDisplayUpdater(threading.Thread):
         """Fully update the plot"""
         
         self.ax.clear()
-        data = np.load(StringIO.StringIO(self.server.binary_image()))  
-        self.image = self.ax.imshow(data)
+        data = np.load(StringIO.StringIO(self.server.scaled_image()))  
+        self.image = self.ax.imshow(data, cmap=cm.get_cmap('hot'), vmin=0, vmax=256)
     
         #for roi in self.server.roi_list():
         #    print 'draw circle for roi at ', roi[0], roi[1], roi[2]
-        self.circle_artists = [self.ax.add_artist( Circle( (roi[0], roi[1]), roi[2], color='r', fill=False ) ) for roi in self.server.roi_list()]
+        self.circle_artists = [self.ax.add_artist( Circle( (roi[0], roi[1]), roi[2], color='g', fill=False ) ) for roi in self.server.roi_list()]
             #self.circles = self.ax.plot( roi[0], roi[1], 'b.' )
         
         self.update_all = False
@@ -483,7 +484,7 @@ class CameraDisplayUpdater(threading.Thread):
             sleep(.1) #sometimes initial call to draw won't have finished yet
             self.background = self.dp.camera_figure.canvas.copy_from_bbox(self.ax.bbox) 
         try:
-            data = np.load(StringIO.StringIO(self.server.binary_image()))
+            data = np.load(StringIO.StringIO(self.server.scaled_image()))
             self.image.set_data(data)
             wx.CallAfter( self._draw_only_image )
         except EOFError:
@@ -856,13 +857,16 @@ class AcquisitionPanel(SingletonHasTraits):
     @on_trait_change('frame_rate, em_gain')
     def save_camera_settings(self, name, new):
         to_save['acqusition.camera.'+name] = new
+    
+    @on_trait_change('frame_rate, em_gain')
+    def update_camera_settings(self, name, new):
         try:
             conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
             if name is 'frame_rate' : conn.root.set_frame_rate(new)
             if name is 'em_gain' : conn.root.set_gain(new)
             conn.close()
         except:
-            print 'Connection to camera lost. Can not set '+name
+            print 'Connection to camera lost. Not able to set ', name, 'to', new
     
     @on_trait_change('update_camera')
     def camera_handler(self, name, state):
@@ -1029,6 +1033,15 @@ class DisplayPanel(SingletonHasTraits):
     def _photons_plot_autoscale_fired(self):
         print 'Auto-scale photons plot'
         PhotonsPlotUpdater().update_all = True
+        
+    def _camera_autoscale_fired(self):
+        print 'Auto-scale camera display'
+        try:
+            conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
+            conn.root.autoscale()
+            conn.close()
+        except:
+            print 'Connection to camera lost. Not able to re-autoscale'
 
 class MainWindowHandler(Handler):
     def close(self, info, is_OK):
