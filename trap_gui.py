@@ -836,7 +836,7 @@ class AcquisitionPanel(SingletonHasTraits):
     
     count_period = Float()
     frame_rate = Float()
-    em_gain = Float()
+    em_gain = Range(0.0, 200.0)
     counting = Bool()
     update_camera = Bool()
     manual_roi = Bool()
@@ -876,11 +876,13 @@ class AcquisitionPanel(SingletonHasTraits):
     def update_camera_settings(self, name, new):
         try:
             conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
-            if name is 'frame_rate' : conn.root.set_frame_rate(new)
-            if name is 'em_gain' : conn.root.set_gain(new)
+            conn.root.camera_setting(name, new)
             conn.close()
         except:
             print 'Connection to camera lost. Not able to set ', name, 'to', new
+        
+        # Also update how fast the gui update loop asks for new image
+        if name is 'frame_rate' : CameraDisplayUpdater._instance.frame_rate = new
     
     @on_trait_change('update_camera')
     def camera_handler(self, name, state):
@@ -1064,6 +1066,7 @@ class MainWindowHandler(Handler):
         
         try:
             AcquisitionPanel()._photons_update_thread.stop()
+            CameraDisplayUpdater._instance.stop()
         except AttributeError:
             pass
         

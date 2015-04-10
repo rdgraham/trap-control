@@ -38,8 +38,8 @@ class CameraService(rpyc.Service):
         cls.image = image_data.astype('f')
 
     def exposed_autoscale(self):
-        print 'Client requested autoscale. Now max', self.scale_max, 'min', self.scale_min
         self.autoscale()
+        print 'Client requested autoscale. Now max', self.scale_max, 'min', self.scale_min
         
     def autoscale(self):
         try:
@@ -91,7 +91,8 @@ class CameraService(rpyc.Service):
         image = (256*np.random.rand(1000, 1000)).astype(np.uint8)
         
         roi = self.all_roi[roi_name]
-        mean = np.mean( image * self.circular_mask( (roi[0], roi[1]), roi[2], image ) )
+        mask = self.circular_mask( (roi[0], roi[1]), roi[2], image )
+        mean = np.sum( image * mask ) / np.sum(mask)
         return {'mean' : mean}
         
     #return(sum(array[mask]))
@@ -116,14 +117,23 @@ class CameraService(rpyc.Service):
     
     def exposed_get_roi(self,name):
         return self.all_roi[name]
-
-    def exposed_set_gain(self, gain):
-        print 'Client requested gain change : ', gain
-        self.luca.set_gain(gain)
+    
+    def exposed_camera_setting(self, setting, value):
+        """Change a camera setting to given value. Automatically stops the acqusition if required.
+           'frame_rate' and 'em_gain' currently supported.
+        """
         
-    def exposed_set_frame_rate(self, frame_rate):
-        print 'Client requested frame rate change : ', frame_rate
-        self.luca.set_exposure(1.0/frame_rate)
+        was_acquiring = self.luca.acquiring
+        if self.luca.acquiring:
+            print 'Client requested change of ', setting, ' to ', value, ' : must stop acquisition'
+            self.luca.stop_acquiring(join=True)
+            
+        if setting == 'frame_rate' : self.luca.set_exposure(1.0/value)
+        if setting == 'em_gain' : self.luca.set_gain(value)
+        
+        if was_acquiring : 
+            print 'Restarted acquisition'
+            self.luca.start_acquiring()
     
 class Luca( object ):
     
@@ -192,15 +202,19 @@ class Luca( object ):
             print exc
                         
     def set_gain( self, gain ):
-        if self.acquiring: 
+        if self.acquiring:
+            print 'Unable to change gain during acqusition'
             return False
             
         he = self._handle_error
         try:
-            he( self.atmcd.SetEMCCDGain( c_long(gain) ), "SetEMCCDGain" )
+            print 'Trying to set EMCCDGain to', gain
+            he( self.atmcd.SetEMCCDGain( c_int(int(gain)) ), "SetEMCCDGain" )
         except ValueError as exc:
-            print exc
+            print 'Error setting gain : ', exc
             return False
+        
+        print 'Success in setting EMCCD Gain'
         return True
     
     def set_exposure( self, exposure_time ):
@@ -286,7 +300,8 @@ class Luca( object ):
         self.acquiring = False
         if join:
             self.thread.join()
-        #time.sleep(self.exposure_time)
+        time.sleep(self.exposure_time)
+        print 'Stopped acqusition'
         
     def shutdown( self ):
         self.acquiring = False
