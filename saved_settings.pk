@@ -11,19 +11,22 @@ S'Q'
 sS'LasersPanel.region1'
 p5
 S'Q'
-sS'chip.trap'
+sS'acqusition.camera.frame_rate'
 p6
-Vhoa2
+F0
+sS'chip.trap'
 p7
-sS'TrapRegion.name'
+Vhoa2
 p8
+sS'TrapRegion.name'
+p9
 S'Q'
 sS'TrapRegion.solution_description'
-p9
-S'Symmetric merge'
 p10
-sS'SequenceBase.solution_description'
-p11
 S'Symmetric merge'
+p11
+sS'SequenceBase.solution_description'
 p12
+S'Symmetric merge'
+p13
 s.
