@@ -513,7 +513,11 @@ class CameraDisplayUpdater(threading.Thread):
                 self.update_data()
             
             # take into account that drawing takes some time ...
-            while time.time()-start < 1.0 / self.frame_rate:
+            if self.frame_rate == 0 : 
+                period = 1.0
+            else:
+                period = 1.0 / self.frame_rate
+            while time.time()-start < period:
                 sleep(.01)
             
 class SwitchPanel(HasTraits):
@@ -881,8 +885,8 @@ class AcquisitionPanel(SingletonHasTraits):
         except:
             print 'Connection to camera lost. Not able to set ', name, 'to', new
         
-        # Also update how fast the gui update loop asks for new image
-        if name is 'frame_rate' : CameraDisplayUpdater._instance.frame_rate = new
+        # Also update how fast the gui update loop asks for new image.
+        if name == 'frame_rate' : CameraDisplayUpdater._instance.frame_rate = new
     
     @on_trait_change('update_camera')
     def camera_handler(self, name, state):

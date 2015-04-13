@@ -127,8 +127,14 @@ class CameraService(rpyc.Service):
         if self.luca.acquiring:
             print 'Client requested change of ', setting, ' to ', value, ' : must stop acquisition'
             self.luca.stop_acquiring(join=True)
-            
-        if setting == 'frame_rate' : self.luca.set_exposure(1.0/value)
+
+        if setting == 'frame_rate' and value == 0.0 : 
+            self.luca.stop_acquiring(join=True)
+            was_acquiring = False
+        if setting == 'frame_rate' and value > 0.0 :
+            self.luca.set_exposure(1.0/value)
+            was_acquiring = True
+        
         if setting == 'em_gain' : self.luca.set_gain(value)
         
         if was_acquiring : 
@@ -203,18 +209,15 @@ class Luca( object ):
                         
     def set_gain( self, gain ):
         if self.acquiring:
-            print 'Unable to change gain during acqusition'
             return False
             
         he = self._handle_error
         try:
-            print 'Trying to set EMCCDGain to', gain
+            #print 'Trying to set EMCCDGain to', gain
             he( self.atmcd.SetEMCCDGain( c_int(int(gain)) ), "SetEMCCDGain" )
         except ValueError as exc:
             print 'Error setting gain : ', exc
             return False
-        
-        print 'Success in setting EMCCD Gain'
         return True
     
     def set_exposure( self, exposure_time ):
