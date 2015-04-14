@@ -480,7 +480,7 @@ class CameraDisplayUpdater(threading.Thread):
         
         self.label_artists = [self.ax.add_artist( \
                                 Text(x=self.roi_label_position(roi)[0], y=self.roi_label_position(roi)[1], color='g', backgroundcolor='w', \
-                                     text=str(self.server.roi_stats(roi)['mean'] )) \
+                                     text=str( np.round(self.server.roi_stats(roi)['mean']) )) \
                              ) for roi in self.server.roi_names()]
         
         for artist in self.circle_artists:
