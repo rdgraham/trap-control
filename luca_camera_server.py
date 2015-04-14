@@ -37,15 +37,24 @@ class CameraService(rpyc.Service):
         print 'Got image'
         cls.image = image_data.astype('f')
 
-    def exposed_autoscale(self):
-        self.autoscale()
-        print 'Client requested autoscale. Now max', self.scale_max, 'min', self.scale_min
+    #def exposed_autoscale_old(self):
+    #    self.autoscale()
+    #    print 'Client requested autoscale. Now max', self.scale_max, 'min', self.scale_min
         
-    def autoscale(self):
+    def exposed_autoscale(self):
         try:
-            self.scale_min = np.min(self.image)
-            self.scale_max = np.max(self.image)        
+            hist, bin_edges = np.histogram(self.image, bins=30)
+            hist = hist / float(np.max(hist))
+            self.scale_min = bin_edges[  np.nonzero(hist > .2)[0][0]  ]
+            self.scale_max = bin_edges[  np.nonzero(hist > .2)[0][-1]  ]
+            print hist
+            print bin_edges
+            print 'Auto scale min : original = ', np.min(self.image), ' final = ', self.scale_min
+            print 'Auto scale max : original = ', np.max(self.image), ' final = ', self.scale_max
+            #self.scale_min = np.min(self.image)
+            #self.scale_max = np.max(self.image)
         except TypeError:
+            print 'Unable to autoscale, using default 0..100'
             self.scale_min = 0
             self.scale_max = 100
         
@@ -55,9 +64,9 @@ class CameraService(rpyc.Service):
     def exposed_scaled_image(self):
         if self.scale_min is None or self.scale_max is None:
             # Auto scale never set, determine automatically
-            self.autoscale()
+            self.exposed_autoscale()
         
-        image_to_send = (256* (self.image-self.scale_min)/(self.scale_max-self.scale_min)).astype(np.uint8)
+        image_to_send = (256* np.clip((self.image-self.scale_min)/(self.scale_max-self.scale_min),0,1.0)).astype(np.uint8)
         
         # need to make a copy in some way on the server side otherwise
         # it will be really slow as synchronizing object across socket
