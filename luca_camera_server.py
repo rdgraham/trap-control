@@ -97,11 +97,10 @@ class CameraService(rpyc.Service):
         return mask
         
     def exposed_roi_stats(self, roi_name):
-        image = (256*np.random.rand(1000, 1000)).astype(np.uint8)
-        
+                
         roi = self.all_roi[roi_name]
-        mask = self.circular_mask( (roi[0], roi[1]), roi[2], image )
-        mean = np.sum( image * mask ) / np.sum(mask)
+        mask = self.circular_mask( (roi[0], roi[1]), roi[2], self.image )
+        mean = np.sum( self.image * mask ) / np.sum(mask)
         return {'mean' : mean}
         
     #return(sum(array[mask]))
