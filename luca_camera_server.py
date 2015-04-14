@@ -16,6 +16,9 @@ class CameraService(rpyc.Service):
     luca = None
     scale_min = None
     scale_max = None
+    
+    auto_min = 0.2
+    auto_max = 0.05
 
     @classmethod
     def backend_init(cls):
@@ -40,13 +43,21 @@ class CameraService(rpyc.Service):
     #def exposed_autoscale_old(self):
     #    self.autoscale()
     #    print 'Client requested autoscale. Now max', self.scale_max, 'min', self.scale_min
-        
+    def exposed_limit_autoscale(self, auto_min, auto_max):
+        self.auto_min = auto_min
+        self.auto_max = auto_max
+        print 'Client changed autoscale limits to ', auto_min, '...', auto_max
+    
     def exposed_autoscale(self):
         try:
-            hist, bin_edges = np.histogram(self.image, bins=30)
+            hist, bin_edges = np.histogram(self.image, bins=50)
             hist = hist / float(np.max(hist))
-            self.scale_min = bin_edges[  np.nonzero(hist > .2)[0][0]  ]
-            self.scale_max = bin_edges[  np.nonzero(hist > .2)[0][-1]  ]
+            self.scale_min = bin_edges[ np.nonzero(hist > self.auto_min )[0][0] ]
+            self.scale_max = bin_edges[ np.nonzero(hist > self.auto_max )[0][-1]]
+            
+            # In case of a single peak, ensure max > min
+            if self.scale_max == self.scale_min : self.scale_max = bin_edges[ np.nonzero(hist > self.auto_min)[0][1] ]
+            
             print hist
             print bin_edges
             print 'Auto scale min : original = ', np.min(self.image), ' final = ', self.scale_min

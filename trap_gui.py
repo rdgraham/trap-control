@@ -841,6 +841,8 @@ class AcquisitionPanel(SingletonHasTraits):
     count_period = Float()
     frame_rate = Float()
     em_gain = Range(0.0, 200.0)
+    autoscale_min = Range(0.0, 1.0)
+    autoscale_max = Range(0.0, 1.0)
     counting = Bool()
     update_camera = Bool()
     manual_roi = Bool()
@@ -857,6 +859,8 @@ class AcquisitionPanel(SingletonHasTraits):
                         Item('update_camera', label='Update display'),
                         Item('frame_rate', label='Frames / sec'),
                         Item('em_gain', label='EM gain'),
+                        Item('autoscale_min', label='Autoscale max', editor=RangeEditor(mode='slider')),
+                        Item('autoscale_max', label='Autoscale min', editor=RangeEditor(mode='slider')),
                         label = 'Imaging'
                         ),
                     Group(
@@ -872,9 +876,20 @@ class AcquisitionPanel(SingletonHasTraits):
     # Load and save all the settings for the camera
     _frame_rate_default       = lambda self : SettingLoader('acqusition.camera.frame_rate', 1)()
     _em_gain_default          = lambda self : SettingLoader('acqusition.camera.em_gain', 0)()
-    @on_trait_change('frame_rate, em_gain')
+    _autoscale_min_default    = lambda self : SettingLoader('acqusition.camera.autoscale_min', 0)()
+    _autoscale_max_default    = lambda self : SettingLoader('acqusition.camera.autoscale_max', 0)()
+    @on_trait_change('frame_rate, em_gain, autoscale_min, autoscale_max')
     def save_camera_settings(self, name, new):
         to_save['acqusition.camera.'+name] = new
+    
+    @on_trait_change('autoscale_min, autoscale_max')
+    def update_autoscale_settings(self, name, new):
+        try:
+            conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
+            conn.root.limit_autoscale(autoscale_min, autoscale_max)
+            conn.close()
+        except:
+            print 'Connection to camera lost. Unable to change autoscale settings'
     
     @on_trait_change('frame_rate, em_gain')
     def update_camera_settings(self, name, new):
