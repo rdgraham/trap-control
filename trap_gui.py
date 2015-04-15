@@ -97,7 +97,12 @@ class Chip(SingletonHasTraits):
             if saved in self.available_names:
                 return saved
         except KeyError:
-            return self.available_names[0]
+            #print 'No trap saved. Assuming default ', self.available_names[0]
+            #return self.available_names[0]
+            default = solutions.solution_classes[0].for_traps
+            if type(default) is type(()): default = default[0]
+            print 'No trap saved. Assuming a default from available solution classes : ', default
+            return default
     
     def _trap_fired(self):
         # update the available regions enum boxes elsewhere in program
@@ -111,6 +116,10 @@ class Chip(SingletonHasTraits):
         
         # update available solutions enum box
         available_solutions = [c.description for c in filter(lambda c : self.trap in c.for_traps , solutions.solution_classes)]
+        if len(available_solutions) == 0 : print 'Error : no available solution files which will work with selected trap ', self.trap
+
+        #print 'Available solutions             : ', [c.for_traps for c in solutions.solution_classes]
+        #print 'Available solution descriptions : ', available_solutions
         tr = TrapRegion()
         tr.solution_descriptions = available_solutions
         tr.solution_description = SettingLoader('TrapRegion.solution_description' , available_solutions[0])()
@@ -628,7 +637,6 @@ class SequenceBase(SingletonHasTraits):
         
         #Disable width if not allowed by solution
         self._width_allowed = 'width' in self.solution.adjustable
-        
         to_save['SequenceBase.solution_description'] = self.solution_description
         
 class SequenceStart(SingletonHasTraits):

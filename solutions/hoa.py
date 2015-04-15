@@ -5,6 +5,8 @@ import numpy as np
 class SandiaHoaRotation(Solution):
     for_traps = ('hoa')
     description = 'Sandia asym434'
+    uses_regions = ('Q')
+    adjustable = ('Sym scale', 'Asym scale')
 
     rot = ([0.0892857, 0.216837, 0.382653, 0.535714, 0.727041, 0.956633, 1.21173, 1.47959, 1.79847, 2.09184, 2.3852, 2.67857, 3.02296, 3.31633, 3.62245, 4.01786, 4.375, 4.66837, 4.89796, 5] , \
            [28.4483, 25.0862, 21.9828, 19.5259, 16.9397, 14.7414, 12.6724, 11.25, 9.69828, 8.7931, 8.01724, 7.24138, 6.59483, 6.07759, 5.81897, 5.43103, 4.91379, 4.65517, 4.52586, 4.52586 ] )
@@ -21,7 +23,8 @@ class SandiaHoaRotation(Solution):
 
     def __init__(self, p):
         Solution.__init__(self, p)
-        voltage = self._voltage
+        #voltage = self._voltage
+        voltage = self.voltage
         
         voltage('Q', -5, .981, 1.0)
         voltage('Q', -4, .981, 1.0)
