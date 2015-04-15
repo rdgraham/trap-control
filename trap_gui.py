@@ -427,8 +427,8 @@ class CameraDisplayUpdater(threading.Thread):
         self.update_all = True
         self.ax = self.dp.camera_figure.axes[0]    
         
-        self.background = None    
-    
+        self.background = None 
+        
         try:
             self.conn = rpyc.connect(self.address, self.port, config = {"allow_public_attrs" : True, \
                                                                         "allow_pickle" : True})
@@ -465,6 +465,26 @@ class CameraDisplayUpdater(threading.Thread):
         else :
             return (x,y+r)
     
+    def update_stats(self):
+        stats = self.server.image_stats()
+        text = ''
+        
+        column_length = 25
+        items_per_column = 3
+        item_number = 0
+        
+        for k,v in stats.iteritems():
+            item_text = str(k) + ' : ' + str(np.round(v, 3))
+            item_number += 1
+            if item_number == items_per_column : 
+                item_text += '\n'
+                item_number = 0
+            else:
+                item_text = item_text.ljust( column_length )
+            text += item_text
+        
+        self.dp.camera_info = text
+            
     def update_plot(self):
         """Fully update the plot"""
         
@@ -516,6 +536,9 @@ class CameraDisplayUpdater(threading.Thread):
     def run(self):
         while not self._stop.is_set():
             start = time.time()
+            
+            self.update_stats()
+            
             if self.update_all:
                 self.update_plot()
             else:
@@ -1037,6 +1060,7 @@ class DisplayPanel(SingletonHasTraits):
     photons_figure = Instance(Figure)
     photons_plot_autoscale = Button('Auto-scale')
     camera_figure = Instance(Figure)
+    camera_info = Str(font='courier')
     camera_autoscale = Button('Auto-scale')
     
     def _camera_figure_default(self):
@@ -1068,6 +1092,7 @@ class DisplayPanel(SingletonHasTraits):
                         label='Photons'),
                     Group(
                         Item('camera_figure', editor=MPLFigureEditor(), dock='vertical', height=.95, show_label=False),
+                        Item('camera_info', style = 'readonly', height=.1, show_label=False),
                         Item('camera_autoscale', height=.05, show_label=False),
                         label='Camera'),
                     layout='tabbed', springy=True
@@ -1079,12 +1104,12 @@ class DisplayPanel(SingletonHasTraits):
         
     def _camera_autoscale_fired(self):
         print 'Auto-scale camera display'
-        #try:
-        conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
-        conn.root.autoscale()
-        conn.close()
-        #except:
-        #    print 'Connection to camera lost. Not able to re-autoscale'
+        try:
+            conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
+            conn.root.autoscale()
+            conn.close()
+        except:
+            print 'Connection to camera lost or camera error. Not able to re-autoscale'
 
 class MainWindowHandler(Handler):
     def close(self, info, is_OK):

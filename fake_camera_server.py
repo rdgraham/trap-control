@@ -47,14 +47,16 @@ class CameraService(rpyc.Service):
         return mask
     
     def exposed_image_stats(self):
+        image = (65535*np.random.rand(1000, 1000)).astype('int32')
+        
         image_max = 65535
-        saturation = np.sum(np.nonzero(image == image_max)) / image.size
+        saturation = float(np.sum(np.nonzero(image >= image_max-1))) / image.size
         
         return { 'saturation' : saturation ,
-                 'min' : np.min(image) / image_max ,
-                 'max' : np.max(image) / image_max ,
-                 'mean' : np.average(image) / image_max,
-                 'stdev' : np.std(image) / image_max }
+                 'min' : float(np.min(image)) / image_max ,
+                 'max' : float(np.max(image)) / image_max ,
+                 'mean' : float(np.average(image)) / image_max,
+                 'stdev' : float(np.std(image)) / image_max }
     
     def exposed_roi_stats(self, roi_name):
         image = (256*np.random.rand(1000, 1000)).astype(np.uint8)

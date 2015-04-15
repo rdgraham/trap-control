@@ -74,13 +74,24 @@ class CameraService(rpyc.Service):
         
     def exposed_setbg(self):
         pass
+
+    def exposed_image_stats(self):
+        image_max = 65535
+        
+        saturation = float(np.sum(np.nonzero(image >= image_max-1))) / image.size
+        
+        return { 'saturation' : saturation ,
+                 'min' : float(np.min(image)) / image_max ,
+                 'max' : float(np.max(image)) / image_max ,
+                 'mean' : float(np.average(image)) / image_max,
+                 'stdev' : float(np.std(image)) / image_max }
     
     def exposed_scaled_image(self):
         if self.scale_min is None or self.scale_max is None:
             # Auto scale never set, determine automatically
             self.exposed_autoscale()
         
-        image_to_send = (256* np.clip((self.image-self.scale_min)/(self.scale_max-self.scale_min),0,1.0)).astype(np.uint8)
+        image_to_send = (255* np.clip((self.image-self.scale_min)/(self.scale_max-self.scale_min),0,1.0)).astype(np.uint8)
         
         # need to make a copy in some way on the server side otherwise
         # it will be really slow as synchronizing object across socket
