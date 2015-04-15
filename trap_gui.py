@@ -1127,11 +1127,12 @@ class MainWindowHandler(Handler):
         if counters.Driver.running : counters.Driver(Devices().counter_driver_name).stop()
         if lasers.Driver.running : lasers.Driver(Devices().lasers_driver_name).stop()
 
-        print 'Saving settings'
+        print 'Saving', len(to_save), 'settings ...'
         
         with open('saved_settings.pk', 'w') as f:
             pickle.dump( to_save, f)
-        
+        print 'Done saving'
+
         return True
 
 class MainWindow(HasTraits):

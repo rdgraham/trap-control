@@ -76,7 +76,7 @@ class CameraService(rpyc.Service):
         pass
 
     def exposed_image_stats(self):
-        image_max = 65535
+        image_max = 16383
         
         saturation = float(np.sum(np.nonzero(self.image >= image_max-1))) / self.image.size
         
