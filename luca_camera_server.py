@@ -37,8 +37,8 @@ class CameraService(rpyc.Service):
     
     @classmethod
     def got_image(cls, image_data):
-        print 'Got image'
         cls.image = image_data.astype('f')
+        print 'Got image. Min = ', np.min(cls.image), ' max = ', np.max(cls.image)
 
     #def exposed_autoscale_old(self):
     #    self.autoscale()
@@ -56,8 +56,11 @@ class CameraService(rpyc.Service):
             self.scale_max = bin_edges[ np.nonzero(hist > self.auto_max )[0][-1]]
             
             # In case of a single peak, ensure max > min
-            if self.scale_max == self.scale_min : self.scale_max = bin_edges[ np.nonzero(hist > self.auto_min)[0][1] ]
-            
+            try:
+                if self.scale_max == self.scale_min : self.scale_max = bin_edges[ np.nonzero(hist > self.auto_min)[0][1] ]
+            except IndexError:
+                print 'Camera probably saturating'
+
             print hist
             print bin_edges
             print 'Auto scale min : original = ', np.min(self.image), ' final = ', self.scale_min

@@ -867,8 +867,8 @@ class AcquisitionPanel(SingletonHasTraits):
                         Item('update_camera', label='Update display'),
                         Item('frame_rate', label='Frames / sec'),
                         Item('em_gain', label='EM gain'),
-                        Item('autoscale_min', label='Autoscale max', editor=RangeEditor(mode='slider')),
-                        Item('autoscale_max', label='Autoscale min', editor=RangeEditor(mode='slider')),
+                        Item('autoscale_min', label='Autoscale min', editor=RangeEditor(mode='slider')),
+                        Item('autoscale_max', label='Autoscale max', editor=RangeEditor(mode='slider')),
                         label = 'Imaging'
                         ),
                     Group(
@@ -1079,12 +1079,12 @@ class DisplayPanel(SingletonHasTraits):
         
     def _camera_autoscale_fired(self):
         print 'Auto-scale camera display'
-        try:
-            conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
-            conn.root.autoscale()
-            conn.close()
-        except:
-            print 'Connection to camera lost. Not able to re-autoscale'
+        #try:
+        conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
+        conn.root.autoscale()
+        conn.close()
+        #except:
+        #    print 'Connection to camera lost. Not able to re-autoscale'
 
 class MainWindowHandler(Handler):
     def close(self, info, is_OK):
