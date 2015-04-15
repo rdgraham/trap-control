@@ -54,6 +54,7 @@ class SettingLoader(object):
         self.setting_key, self.default = setting_key, default
     def __call__(self, ):
         try:
+            to_save[self.setting_key] = saved_settings[self.setting_key]
             return saved_settings[self.setting_key]
         except KeyError:
             print 'Unable to load saved setting for ', self.setting_key
