@@ -35,10 +35,7 @@ class CameraService(rpyc.Service):
     def exposed_about(self):
         print "Client requested information about this service"
         return "Fake emccd camera server"
-    
-    def exposed_image_stats(self):
-        return None
-    
+
     def circular_mask(self, index,radius,array):
         a,b = index
         nx,ny = array.shape

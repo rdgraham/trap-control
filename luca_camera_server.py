@@ -78,13 +78,13 @@ class CameraService(rpyc.Service):
     def exposed_image_stats(self):
         image_max = 65535
         
-        saturation = float(np.sum(np.nonzero(image >= image_max-1))) / image.size
+        saturation = float(np.sum(np.nonzero(self.image >= image_max-1))) / self.image.size
         
         return { 'saturation' : saturation ,
-                 'min' : float(np.min(image)) / image_max ,
-                 'max' : float(np.max(image)) / image_max ,
-                 'mean' : float(np.average(image)) / image_max,
-                 'stdev' : float(np.std(image)) / image_max }
+                 'min' : float(np.min(self.image)) / image_max ,
+                 'max' : float(np.max(self.image)) / image_max ,
+                 'mean' : float(np.average(self.image)) / image_max,
+                 'stdev' : float(np.std(self.image)) / image_max }
     
     def exposed_scaled_image(self):
         if self.scale_min is None or self.scale_max is None:
@@ -110,10 +110,7 @@ class CameraService(rpyc.Service):
     def exposed_about(self):
         print "Client requested information about this service"
         return "Basic windows server for Andor LUCA EMCCD"
-    
-    def exposed_image_stats(self):
-        return None
-   
+
     def circular_mask(self, index, radius, array):
         a,b = index
         nx,ny = array.shape
