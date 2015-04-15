@@ -16,17 +16,18 @@ class CameraService(rpyc.Service):
     @classmethod
     def backend_terminate(cls):
         print 'Terminating backend'
-
+    
     def exposed_scaled_image(self):
         print 'Returning camera image'
-        background = (256*np.random.rand(1000, 1000)).astype(np.uint8)
-        
+        image = (255*np.random.rand(1000, 1000)).astype(np.uint8)
+        image = (image*.5) + image*self.circular_mask( (500,500), 30, image )
+        #image[500:600,500:600] = 255*np.ones([100,100])
         # need to make a copy in some way on the server side otherwise
         # it will be really slow as synchronizing object across socket
         # connection. This seems to be the fastest way. Could add compression
         # if network bandwidth an issue.        
         temp = StringIO.StringIO()
-        np.save(temp, background)
+        np.save(temp, image)
         binary = temp.getvalue()
         temp.close()
         return binary
@@ -44,6 +45,16 @@ class CameraService(rpyc.Service):
         y,x = np.ogrid[-a:nx-a,-b:ny-b]
         mask = x*x + y*y <= radius*radius
         return mask
+    
+    def exposed_image_stats(self):
+        image_max = 65535
+        saturation = np.sum(np.nonzero(image == image_max)) / image.size
+        
+        return { 'saturation' : saturation ,
+                 'min' : np.min(image) / image_max ,
+                 'max' : np.max(image) / image_max ,
+                 'mean' : np.average(image) / image_max,
+                 'stdev' : np.std(image) / image_max }
     
     def exposed_roi_stats(self, roi_name):
         image = (256*np.random.rand(1000, 1000)).astype(np.uint8)
