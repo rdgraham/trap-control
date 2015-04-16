@@ -190,7 +190,7 @@ class LocalCompensatedUW(UWQuant):
     for_traps = ('hoa2')
     description = 'Locally compensated UW-Q'
     uses_regions = ('Q')
-    adjustable = ('Sym scale', 'vertical_compensation', 'horozontal_compensation', 'axial_compensation')
+    adjustable = ('Sym scale', 'vertical_compensation', 'horizontal_compensation', 'axial_compensation')
  
     def voltage_at(self, (x,y) , region , electrode_offset=0):
         v = super(LocalCompensatedUW, self).voltage_at( (x,y) , region , electrode_offset)
@@ -200,9 +200,9 @@ class LocalCompensatedUW(UWQuant):
         v = v + region.vertical_compensation
         
         if y > 0:
-            v = v + region.horozontal_compensation
+            v = v + region.horizontal_compensation
         else:
-            v = v - region.horozontal_compensation
+            v = v - region.horizontal_compensation
         
         if x > region.center:
             v = v + region.axial_compensation
@@ -215,16 +215,16 @@ class GlobalCompensatedUW(UWQuant):
     for_traps = ('hoa2')
     description = 'Globally compensated UW-Q'
     uses_regions = ('Q')
-    adjustable = ('Sym scale', 'vertical_compensation', 'horozontal_compensation', 'axial_compensation')
+    adjustable = ('Sym scale', 'vertical_compensation', 'horizontal_compensation', 'axial_compensation')
  
     def voltage_at(self, (x,y) , region , electrode_offset=0):
         v = super(LocalCompensatedUW, self).voltage_at( (x,y) , region , electrode_offset)
         
         if x == 19:
             if y > 0:
-                v = v + region.vertical_compensation + region.horozontal_compensation
+                v = v + region.vertical_compensation + region.horizontal_compensation
             else:
-                v = v + region.vertical_compensation - region.horozontal_compensation
+                v = v + region.vertical_compensation - region.horizontal_compensation
             return v
         
         if x > region.center:
