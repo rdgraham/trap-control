@@ -9,6 +9,8 @@ import win32event
 from threading import Thread
 from rpyc.utils.server import ThreadedServer
 
+saturation_level = 16383
+
 class CameraService(rpyc.Service):       
 
     all_roi = {}
@@ -50,7 +52,10 @@ class CameraService(rpyc.Service):
     
     def exposed_autoscale(self):
         try:
-            hist, bin_edges = np.histogram(self.image, bins=50)
+            # desaturate image to remove bright outliers, use this to produce the histogram
+            image_desaturated = self.image[ self.image < (saturation_level-1) ]
+            
+            hist, bin_edges = np.histogram(image_desaturated, bins=50)
             hist = hist / float(np.max(hist))
             self.scale_min = bin_edges[ np.nonzero(hist > self.auto_min )[0][0] ]
             self.scale_max = bin_edges[ np.nonzero(hist > self.auto_max )[0][-1]]
@@ -76,15 +81,14 @@ class CameraService(rpyc.Service):
         pass
 
     def exposed_image_stats(self):
-        image_max = 16383
         
-        saturation = float(np.sum(np.nonzero(self.image >= image_max-1))) / self.image.size
+        saturation = float(np.sum(np.nonzero(self.image >= saturation_level-1))) / self.image.size
         
         return { 'saturation' : saturation ,
-                 'min' : float(np.min(self.image)) / image_max ,
-                 'max' : float(np.max(self.image)) / image_max ,
-                 'mean' : float(np.average(self.image)) / image_max,
-                 'stdev' : float(np.std(self.image)) / image_max }
+                 'min' : float(np.min(self.image)) / saturation_level ,
+                 'max' : float(np.max(self.image)) / saturation_level ,
+                 'mean' : float(np.average(self.image)) / saturation_level,
+                 'stdev' : float(np.std(self.image)) / saturation_level }
     
     def exposed_scaled_image(self):
         if self.scale_min is None or self.scale_max is None:
