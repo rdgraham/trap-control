@@ -218,7 +218,7 @@ class GlobalCompensatedUW(UWQuant):
     adjustable = ('Sym scale', 'vertical_compensation', 'horizontal_compensation', 'axial_compensation')
  
     def voltage_at(self, (x,y) , region , electrode_offset=0):
-        v = super(LocalCompensatedUW, self).voltage_at( (x,y) , region , electrode_offset)
+        v = super(GlobalCompensatedUW, self).voltage_at( (x,y) , region , electrode_offset)
         
         if x == 19:
             if y > 0:
