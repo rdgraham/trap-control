@@ -249,9 +249,15 @@ class TrapRegion(SingletonHasTraits):
     sym_scale = Range(0.0, 10.0, value=1)
     asym_scale = Range(0.0, 10.0)
     sub_electrode = Bool
-
+    vertical_compensation = Range(-10.0, 10.0, value = 0)
+    horozontal_compensation = Range(-10.0, 10.0, value = 0)
+    axial_compensation = Range(-10.0, 10.0, value = 0)
+    
     _sub_electrode_allowed = True
     _width_allowed = False
+    _vertical_compensation_allowed = False
+    _horozontal_compensation_allowed = False
+    _axial_compensation_allowed = False
     
     _solution_update_thread = SolutionPlotUpdater()
     
@@ -260,6 +266,9 @@ class TrapRegion(SingletonHasTraits):
                  Item('sub_electrode', label='Sub-electrode solution', enabled_when='_sub_electrode_allowed'),
                  Item('center', editor=RangeEditor(low_name = 'min_center', high_name = 'max_center', mode='slider')),
                  Item('width', enabled_when='_width_allowed', editor=RangeEditor(high_name = 'max_width', mode='slider')),
+                 Item('vertical_compensation', enabled_when='_vertical_compensation_allowed', editor=RangeEditor(mode = 'slider', low=-10., high=10.)),
+                 Item('horozontal_compensation', enabled_when='_horozontal_compensation_allowed', editor=RangeEditor(mode = 'slider', low=-10., high=10.)),
+                 Item('axial_compensation', enabled_when='_axial_compensation_allowed', editor=RangeEditor(mode = 'slider', low=-10., high=10.)),
                  Item('sym_scale'),
                  Item('asym_scale')
                )
@@ -311,12 +320,15 @@ class TrapRegion(SingletonHasTraits):
             self.sub_electrode = False
             
     @on_trait_change('solution_description')
-    def _update_width_enabled(self):
+    def _update_adjustable_controls(self):
         "Disable width is not allowed by solution"
         
         self._width_allowed = 'width' in self.solution.adjustable
+        self._vertical_compensation_allowed   = 'vertical_compensation' in self.solution.adjustable
+        self._horozontal_compensation_allowed = 'horozontal_compensation' in self.solution.adjustable
+        self._axial_compensation_allowed      = 'axial_compensation' in self.solution.adjustable
         
-    @on_trait_change('name,solution_description,width,center,sym_scale,asym_scale,sub_electrode')
+    @on_trait_change('name,solution_description,width,center,sym_scale,asym_scale,sub_electrode,vertical_compensation,horozontal_compensation,axial_compensation')
     def _update_solution_display(self, trait=None, name=None, new=None):
         if self._solution_update_thread.is_alive():
             self._solution_update_thread.stop()

@@ -9,7 +9,8 @@ for module in __all__:
     _classes = _classes + pyclbr.readmodule('solutions.'+module).values()
 for klass in _classes: 
     try:
-        if klass.super[0].name != 'Solution' :
+        # TODO : a better job of this
+        if not (klass.super[0].name == 'Solution' or klass.super[0].super[0].name == 'Solution'):
             continue
     except AttributeError:
         continue
