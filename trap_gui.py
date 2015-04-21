@@ -71,11 +71,18 @@ class Devices(SingletonHasTraits):
     #dac_driver = String('LPT/0xCD00')
     dac_driver = String('nul')
     dac_print_output = Bool(False)
+    clear_dac = Bool(False)
     counter_driver_name = String('nul')
     lasers_driver_name = String('nul')
     
     camera_server = String('nul')
     camera_port = Int(0)
+    
+    view = View( Item('counter_driver_name'), 
+                 Item('lasers_driver_name'), 
+                 Item('dac_driver'), 
+                 Item('dac_print_output'), 
+                 Item('clear_dac') )
     
     _dac_driver_default          = lambda self : SettingLoader('devices.dac_driver', 'nul')()
     _counter_driver_name_default = lambda self : SettingLoader('devices.counter_driver_name', 'nul')()
@@ -812,7 +819,7 @@ class SequenceRun(SingletonHasTraits):
         
         cp = ControlPanel()
         
-        c = dac_control.DacController(Devices().dac_driver, Chip().mapping)
+        c = dac_control.DacController(Devices().dac_driver, Chip().mapping, clear_dac=Devices().clear_dac)
         # TODO: implement clear beforehand
 
         start_region = SequenceStart()
@@ -1049,7 +1056,7 @@ class ManualPanel(SingletonHasTraits):
         print 'Updating electrodes for '+Chip().trap+' region ' + TrapRegion().name + ' on device '+Devices().dac_driver
         
         cp = ControlPanel()
-        c = dac_control.DacController(Devices().dac_driver, Chip().mapping)
+        c = dac_control.DacController(Devices().dac_driver, Chip().mapping, clear_dac=Devices().clear_dac)
         
         frames = c.build_single(cp.manual_panel.trap_region, print_output=Devices().dac_print_output)
         c.driver.write_frames(frames)

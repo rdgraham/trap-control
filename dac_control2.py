@@ -307,7 +307,7 @@ class DataFile(object):
         #self.potentials = [ [(e,v*s) for e, v in row] for row in self.potentials]
         self.potentials = [dict(zip(p.keys(), [s*i for i in p.values()] )) for p in self.potentials]
 
-@lru_cache(maxsize=32)
+#@lru_cache(maxsize=32)
 class DacController(object):
     """Setup a DAC Controller. Driver is automatically selected based on device.
        If map_source is a string, it should be the filename of the mapping spreadsheet file and trap_name should be specified
@@ -320,7 +320,7 @@ class DacController(object):
     precision = 1 << 16
     
     
-    def __init__( self, device, map_source, trap_name = None, clear = False ):
+    def __init__( self, device, map_source, trap_name = None, clear_dac = False ):
         
         if type(map_source) == type(''):
             self.trap = trap_mapper.TrapMapping(trap_name, map_source)
@@ -330,7 +330,7 @@ class DacController(object):
         self.driver = Driver(device)
 
         self.offset( 0x2000 )		    # Set range to center about 0
-        if clear:
+        if clear_dac:
             self.input_register( True )
             self.voltage( None, 0. )	    # Set all voltages to 0 initially
             self.driver.write_frame( [0]*3, True )
