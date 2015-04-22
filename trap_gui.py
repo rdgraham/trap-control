@@ -510,7 +510,7 @@ class CameraDisplayUpdater(threading.Thread):
         
         self.ax.clear()
         data = np.load(StringIO.StringIO(self.server.scaled_image()))  
-        self.image = self.ax.imshow(data, cmap=cm.get_cmap('hot'), vmin=0, vmax=256)
+        self.image = self.ax.imshow(data, cmap=cm.get_cmap(self.dp.camera_colormap), vmin=0, vmax=256)
     
         #for roi in self.server.roi_list():
         #    print 'draw circle for roi at ', roi[0], roi[1], roi[2]
@@ -527,15 +527,19 @@ class CameraDisplayUpdater(threading.Thread):
         except RuntimeError:
             pass
         
+
         self.label_artists = [self.ax.add_artist( \
                                 Text(x=self.roi_label_position(roi)[0], y=self.roi_label_position(roi)[1], color='g', backgroundcolor='w', \
-                                     text=str( np.round(self.server.roi_stats(roi)['mean']) )) \
-                             ) for roi in self.server.roi_names()]
+                                    text=str( np.round(self.server.roi_stats(roi)['mean']) )) \
+                            ) for roi in self.server.roi_names()]
+                        
+        if self.dp.camera_show_roi_circles:
+            for artist in self.circle_artists:
+                self.ax.draw_artist(artist)
         
-        for artist in self.circle_artists:
-            self.ax.draw_artist(artist)
-        for artist in self.label_artists:
-            self.ax.draw_artist(artist)
+        if self.dp.camera_show_roi_info:
+            for artist in self.label_artists:
+                self.ax.draw_artist(artist)
         
         self.dp.camera_figure.canvas.blit(self.ax.bbox)
         
@@ -1082,6 +1086,9 @@ class DisplayPanel(SingletonHasTraits):
     camera_figure = Instance(Figure)
     camera_info = Str(font='courier')
     camera_autoscale = Button('Auto-scale')
+    camera_show_roi_info = Bool()
+    camera_show_roi_circles = Bool()
+    camera_colormap = Enum('hot', 'gray', 'bone', 'Blues', 'ocean')
     
     def _camera_figure_default(self):
         figure = Figure()
@@ -1113,11 +1120,21 @@ class DisplayPanel(SingletonHasTraits):
                     Group(
                         Item('camera_figure', editor=MPLFigureEditor(), dock='vertical', height=.95, show_label=False),
                         Item('camera_info', style = 'readonly', height=.1, show_label=False),
-                        Item('camera_autoscale', height=.05, show_label=False),
+                        Group(
+                            Item('camera_autoscale', height=.05, show_label=False),
+                            Item('camera_show_roi_info', label = 'Show ROI label'),
+                            Item('camera_show_roi_circles', label = 'Show ROI circles'),
+                            Item('camera_colormap', label = 'Colormap'),
+                            orientation = 'horizontal'
+                        ),
                         label='Camera'),
                     layout='tabbed', springy=True
                     )
                 )
+    
+    def _camera_colormap_fired(self):
+        CameraDisplayUpdater._instance.update_all = True            
+    
     def _photons_plot_autoscale_fired(self):
         print 'Auto-scale photons plot'
         PhotonsPlotUpdater().update_all = True
