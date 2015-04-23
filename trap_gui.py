@@ -80,7 +80,9 @@ class Devices(SingletonHasTraits):
     
     view = View( Item('counter_driver_name'), 
                  Item('lasers_driver_name'), 
-                 Item('dac_driver'), 
+                 Item('camera_server'),
+                 Item('camera_port'),
+                 Item('dac_driver'),
                  Item('dac_print_output'), 
                  Item('clear_dac') )
     
