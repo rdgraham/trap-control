@@ -1145,6 +1145,8 @@ class DisplayPanel(SingletonHasTraits):
             conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
             conn.root.autoscale()
             conn.close()
+            
+            CameraDisplayUpdater._instance.update_all = True
         except:
             print 'Connection to camera lost or camera error. Not able to re-autoscale'
 
