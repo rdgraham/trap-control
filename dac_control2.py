@@ -313,14 +313,20 @@ class DacController(object):
        If map_source is a string, it should be the filename of the mapping spreadsheet file and trap_name should be specified
        If map_source is a trap_mapper.TrapMapping object 
     """
+    _device = None
+    _map_source = None
+    _trap_name = None
     
     # Specify DAC voltage range
     min_voltage = -10
     max_voltage = 20 + min_voltage
     precision = 1 << 16
     
-    
     def __init__( self, device, map_source, trap_name = None, clear_dac = False ):
+        
+        if not clear_dac and device is _device and map_source is _map_source and trap_name is _trap_name:
+            return
+        _device, _map_source, _trap_name = (device, map_source, trap_name)
         
         if type(map_source) == type(''):
             self.trap = trap_mapper.TrapMapping(trap_name, map_source)
