@@ -1062,7 +1062,7 @@ class ManualPanel(SingletonHasTraits):
         print 'Updating electrodes for '+Chip().trap+' region ' + TrapRegion().name + ' on device '+Devices().dac_driver
         
         cp = ControlPanel()
-        c = dac_control.DacController(Devices().dac_driver, Chip().mapping, clear_dac=Devices().clear_dac)
+        c = dac_control.DacController(Devices().dac_driver, Chip().mapping, Devices().clear_dac)
         
         frames = c.build_single(cp.manual_panel.trap_region, print_output=Devices().dac_print_output)
         c.driver.write_frames(frames)
