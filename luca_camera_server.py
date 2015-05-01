@@ -21,6 +21,7 @@ class CameraService(rpyc.Service):
     
     auto_min = 0.2
     auto_max = 0.05
+    zoom = 1
 
     @classmethod
     def backend_init(cls):
@@ -40,6 +41,15 @@ class CameraService(rpyc.Service):
     @classmethod
     def got_image(cls, image_data):
         cls.image = image_data.astype('f')
+        
+        #apply zoom
+        if self.zoom > 1:
+            width = np.shape(cls.image)[0]
+            height = np.shape(cls.image)[1]
+            newx = (width/2 - width/(2*self.zoom)   , width/2 + width/(2*self.zoom) )
+            newy = (height/2 - height/(2*self.zoom) , height/2 + height/(2*self.zoom) )
+            cls.image = cls.image[ newx[0]:newx[1] , newy[0]:newy[1] ]
+        
         print 'Got image. Min = ', np.min(cls.image), ' max = ', np.max(cls.image)
 
     #def exposed_autoscale_old(self):
@@ -107,7 +117,7 @@ class CameraService(rpyc.Service):
         temp.close()
         
         #print 'Original image : mean', np.average(self.image), 'shape', np.shape(self.image)
-        print 'Returning scaled image to client ', np.min(image_to_send), np.max(image_to_send), np.min(self.image), np.max(self.image)
+        print 'Returning scaled image to client. Scaled range : ', np.min(image_to_send), ' ... ', np.max(image_to_send), 'raw : ', np.min(self.image), ' ... ', np.max(self.image)
         
         return binary
     
@@ -156,7 +166,12 @@ class CameraService(rpyc.Service):
         """Change a camera setting to given value. Automatically stops the acqusition if required.
            'frame_rate' and 'em_gain' currently supported.
         """
+        # These settings can be changed without restart of acqusition
+        if setting == 'zoom':
+            self.zoom = int(value)
+            return
         
+        # These settings will require a restart of acqusition
         was_acquiring = self.luca.acquiring
         if self.luca.acquiring:
             print 'Client requested change of ', setting, ' to ', value, ' : must stop acquisition'

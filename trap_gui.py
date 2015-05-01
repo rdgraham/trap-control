@@ -906,6 +906,7 @@ class AcquisitionPanel(SingletonHasTraits):
     roi_x = Float()
     roi_y = Float()
     roi_r = Float()
+    zoom = Enum(1, 2, 3, 4)
     
     view = View( Group( 
                     Group(
@@ -918,6 +919,7 @@ class AcquisitionPanel(SingletonHasTraits):
                         Item('em_gain', label='EM gain'),
                         Item('autoscale_min', label='Autoscale min', editor=RangeEditor(mode='slider')),
                         Item('autoscale_max', label='Autoscale max', editor=RangeEditor(mode='slider')),
+                        Item('zoom', label='Zoom level'),
                         label = 'Imaging'
                         ),
                     Group(
@@ -935,7 +937,9 @@ class AcquisitionPanel(SingletonHasTraits):
     _em_gain_default          = lambda self : SettingLoader('acqusition.camera.em_gain', 0)()
     _autoscale_min_default    = lambda self : SettingLoader('acqusition.camera.autoscale_min', 0)()
     _autoscale_max_default    = lambda self : SettingLoader('acqusition.camera.autoscale_max', 0)()
-    @on_trait_change('frame_rate, em_gain, autoscale_min, autoscale_max')
+    _zoom_default             = lambda self : SettingLoader('acqusition.camera.zoom', 1)()
+    
+    @on_trait_change('frame_rate, em_gain, autoscale_min, autoscale_max', 'zoom')
     def save_camera_settings(self, name, new):
         to_save['acqusition.camera.'+name] = new
     
@@ -948,7 +952,7 @@ class AcquisitionPanel(SingletonHasTraits):
         except:
             print 'Connection to camera lost. Unable to change autoscale settings'
     
-    @on_trait_change('frame_rate, em_gain')
+    @on_trait_change('frame_rate, em_gain, zoom')
     def update_camera_settings(self, name, new):
         try:
             conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
