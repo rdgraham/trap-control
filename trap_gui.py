@@ -513,13 +513,15 @@ class CameraDisplayUpdater(threading.Thread):
         self.ax.clear()
         data = np.load(StringIO.StringIO(self.server.scaled_image()))  
         self.image = self.ax.imshow(data, cmap=cm.get_cmap(self.dp.camera_colormap), vmin=0, vmax=256)
-    
+
+        #self.background = self.dp.camera_figure.canvas.copy_from_bbox(self.ax.bbox) 
+
         #for roi in self.server.roi_list():
         #    print 'draw circle for roi at ', roi[0], roi[1], roi[2]
         self.circle_artists = [self.ax.add_artist( Circle( (roi[0], roi[1]), roi[2], color='g', fill=False ) ) for roi in self.server.roi_list()]
             #self.circles = self.ax.plot( roi[0], roi[1], 'b.' )
         self.update_all = False
-        #wx.CallAfter(self.dp.camera_figure.canvas.draw)
+        wx.CallAfter(self.dp.camera_figure.canvas.draw)
             
     def _draw_only_image(self):
         
@@ -963,7 +965,9 @@ class AcquisitionPanel(SingletonHasTraits):
         
         # Also update how fast the gui update loop asks for new image.
         if name == 'frame_rate' : CameraDisplayUpdater._instance.frame_rate = new
-    
+        
+        CameraDisplayUpdater._instance.update_all = True
+        
     @on_trait_change('update_camera')
     def camera_handler(self, name, state):
         try:

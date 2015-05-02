@@ -43,12 +43,16 @@ class CameraService(rpyc.Service):
         cls.image = image_data.astype('f')
         
         #apply zoom
-        if self.zoom > 1:
+        if cls.zoom > 1:
+            print 'Applying zoom level ', cls.zoom
+            
             width = np.shape(cls.image)[0]
             height = np.shape(cls.image)[1]
-            newx = (width/2 - width/(2*self.zoom)   , width/2 + width/(2*self.zoom) )
-            newy = (height/2 - height/(2*self.zoom) , height/2 + height/(2*self.zoom) )
+            newx = (width/2 - width/(2*cls.zoom)   , width/2 + width/(2*cls.zoom) )
+            newy = (height/2 - height/(2*cls.zoom) , height/2 + height/(2*cls.zoom) )
+            
             cls.image = cls.image[ newx[0]:newx[1] , newy[0]:newy[1] ]
+            print 'Originl was ', width, 'x' , height, ' new is ', np.shape(cls.image)
         
         print 'Got image. Min = ', np.min(cls.image), ' max = ', np.max(cls.image)
 
@@ -168,7 +172,7 @@ class CameraService(rpyc.Service):
         """
         # These settings can be changed without restart of acqusition
         if setting == 'zoom':
-            self.zoom = int(value)
+            CameraService.zoom = int(value)
             return
         
         # These settings will require a restart of acqusition
