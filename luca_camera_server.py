@@ -44,17 +44,15 @@ class CameraService(rpyc.Service):
         
         #apply zoom
         if cls.zoom > 1:
-            print 'Applying zoom level ', cls.zoom
-            
             width = np.shape(cls.image)[0]
             height = np.shape(cls.image)[1]
             newx = (width/2 - width/(2*cls.zoom)   , width/2 + width/(2*cls.zoom) )
             newy = (height/2 - height/(2*cls.zoom) , height/2 + height/(2*cls.zoom) )
             
             cls.image = cls.image[ newx[0]:newx[1] , newy[0]:newy[1] ]
-            print 'Originl was ', width, 'x' , height, ' new is ', np.shape(cls.image)
+            #print 'Originl was ', width, 'x' , height, ' new is ', np.shape(cls.image)
         
-        print 'Got image. Min = ', np.min(cls.image), ' max = ', np.max(cls.image)
+        print 'Got image. Intensity from ', np.min(cls.image)/saturation_level, ' to ', np.max(cls.image)/saturation_level
 
     #def exposed_autoscale_old(self):
     #    self.autoscale()
