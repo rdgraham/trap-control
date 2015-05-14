@@ -175,7 +175,7 @@ class SolutionPlotUpdater(threading.Thread):
             cp = ControlPanel()
             dp = DisplayPanel()
         except NameError:
-            print 'Unable to update disaplay. Probably not built yet.'
+            print 'Unable to update display. Probably not built yet.'
             return
             
         ax = dp.solution_figure.axes[0]
@@ -900,8 +900,8 @@ class AcquisitionPanel(SingletonHasTraits):
     count_period = Float()
     frame_rate = Float()
     em_gain = Range(0.0, 200.0)
-    autoscale_min = Range(0.0, 1.0)
-    autoscale_max = Range(0.0, 1.0)
+    autoscale_min = Range(0.0, 100.0)
+    autoscale_max = Range(0.0, 100.0)
     counting = Bool()
     update_camera = Bool()
     manual_roi = Bool()
@@ -919,8 +919,8 @@ class AcquisitionPanel(SingletonHasTraits):
                         Item('update_camera', label='Update display'),
                         Item('frame_rate', label='Frames / sec'),
                         Item('em_gain', label='EM gain'),
-                        Item('autoscale_min', label='Autoscale min', editor=RangeEditor(mode='slider')),
-                        Item('autoscale_max', label='Autoscale max', editor=RangeEditor(mode='slider')),
+                        Item('autoscale_min', label='Autoscale min', editor=RangeEditor(mode='slider', low=0, high=100)),
+                        Item('autoscale_max', label='Autoscale max', editor=RangeEditor(mode='slider', low=0, high=100)),
                         Item('zoom', label='Zoom level'),
                         label = 'Imaging'
                         ),
@@ -938,7 +938,7 @@ class AcquisitionPanel(SingletonHasTraits):
     _frame_rate_default       = lambda self : SettingLoader('acqusition.camera.frame_rate', 1)()
     _em_gain_default          = lambda self : SettingLoader('acqusition.camera.em_gain', 0)()
     _autoscale_min_default    = lambda self : SettingLoader('acqusition.camera.autoscale_min', 0)()
-    _autoscale_max_default    = lambda self : SettingLoader('acqusition.camera.autoscale_max', 0)()
+    _autoscale_max_default    = lambda self : SettingLoader('acqusition.camera.autoscale_max', 100)()
     _zoom_default             = lambda self : SettingLoader('acqusition.camera.zoom', 1)()
     
     @on_trait_change('frame_rate, em_gain, autoscale_min, autoscale_max', 'zoom')
@@ -949,7 +949,7 @@ class AcquisitionPanel(SingletonHasTraits):
     def update_autoscale_settings(self, name, new):
         try:
             conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
-            conn.root.limit_autoscale(autoscale_min, autoscale_max)
+            conn.root.limit_autoscale(self.autoscale_min, self.autoscale_max)
             conn.close()
         except:
             print 'Connection to camera lost. Unable to change autoscale settings'

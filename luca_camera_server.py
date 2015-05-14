@@ -19,8 +19,8 @@ class CameraService(rpyc.Service):
     scale_min = None
     scale_max = None
     
-    auto_min = 0.2
-    auto_max = 0.05
+    auto_min = 0
+    auto_max = 100
     zoom = 1
 
     @classmethod
@@ -57,29 +57,38 @@ class CameraService(rpyc.Service):
     #def exposed_autoscale_old(self):
     #    self.autoscale()
     #    print 'Client requested autoscale. Now max', self.scale_max, 'min', self.scale_min
-    def exposed_limit_autoscale(self, auto_min, auto_max):
-        self.auto_min = auto_min
-        self.auto_max = auto_max
-        print 'Client changed autoscale limits to ', auto_min, '...', auto_max
+    @classmethod
+    def exposed_limit_autoscale(cls, auto_min, auto_max):
+        cls.auto_min = auto_min
+        cls.auto_max = auto_max
+        print 'Client changed autoscale limits to ', cls.auto_min, '...', cls.auto_max
     
     def exposed_autoscale(self):
         try:
             # desaturate image to remove bright outliers, use this to produce the histogram
-            image_desaturated = self.image[ self.image < (saturation_level-1) ]
+            #image_desaturated = self.image[ self.image < (saturation_level-1) ]
             
-            hist, bin_edges = np.histogram(image_desaturated, bins=50)
-            hist = hist / float(np.max(hist))
-            self.scale_min = bin_edges[ np.nonzero(hist > self.auto_min )[0][0] ]
-            self.scale_max = bin_edges[ np.nonzero(hist > self.auto_max )[0][-1]]
-            
-            # In case of a single peak, ensure max > min
-            try:
-                if self.scale_max == self.scale_min : self.scale_max = bin_edges[ np.nonzero(hist > self.auto_min)[0][1] ]
-            except IndexError:
-                print 'Camera probably saturating'
+            #hist, bin_edges = np.histogram(image_desaturated, bins=50 )
+            #hist, bin_edges = np.histogram(self.image, bins=128, range=(0, saturation_level) )
 
-            print hist
-            print bin_edges
+            #hist = hist / float(np.max(hist))
+            #self.scale_min = bin_edges[ np.nonzero(hist > self.auto_min )[0][0] ]
+            #self.scale_max = bin_edges[ np.nonzero(hist > self.auto_max )[0][-1]]
+
+            print 'Scaling between', self.auto_min, '...', self.auto_max
+            self.scale_min = np.percentile(self.image, self.auto_min)
+            self.scale_max = np.percentile(self.image, self.auto_max)
+
+            # In case of a single peak, ensure max > min
+            #try:
+            #    if self.scale_max == self.scale_min : self.scale_max = bin_edges[ np.nonzero(hist > self.auto_min)[0][1] ]
+            #except IndexError:
+            #    print 'Unable to auto scale. Default to 0..max'
+            #    self.scale_min = 0.0
+            #    self.scale_max = np.max(self.image)
+
+            #print hist
+            #print bin_edges
             print 'Auto scale min : original = ', np.min(self.image), ' final = ', self.scale_min
             print 'Auto scale max : original = ', np.max(self.image), ' final = ', self.scale_max
             #self.scale_min = np.min(self.image)
