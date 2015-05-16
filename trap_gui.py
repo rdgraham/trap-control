@@ -437,7 +437,7 @@ class CameraDisplayUpdater(threading.Thread):
     def __init__(self, address, port, frame_rate):
         super(CameraDisplayUpdater, self).__init__()
         
-        print 'Initilized camera update thread'
+        print 'Initialized camera update thread'
         
         self.address = address
         self.port = port
@@ -481,11 +481,13 @@ class CameraDisplayUpdater(threading.Thread):
         return self._stop.isSet()
     
     def roi_label_position(self, roi):
+
+        zoom = AcquisitionPanel().zoom
         x,y,r = self.server.get_roi(roi)
-        if y-r > 0 : 
-            return (x,y-r)
+        if y-r > 0 : # TODO: fix to take into account zoom
+            return (x/zoom,(y-r)/zoom )
         else :
-            return (x,y+r)
+            return (x/zoom,(y+r)/zoom )
     
     def update_stats(self):
         stats = self.server.image_stats()
@@ -518,7 +520,8 @@ class CameraDisplayUpdater(threading.Thread):
 
         #for roi in self.server.roi_list():
         #    print 'draw circle for roi at ', roi[0], roi[1], roi[2]
-        self.circle_artists = [self.ax.add_artist( Circle( (roi[0], roi[1]), roi[2], color='g', fill=False ) ) for roi in self.server.roi_list()]
+        zoom = AcquisitionPanel().zoom
+        self.circle_artists = [self.ax.add_artist( Circle( (roi[0]/zoom, roi[1]/zoom), roi[2], color='g', fill=False ) ) for roi in self.server.roi_list()]
             #self.circles = self.ax.plot( roi[0], roi[1], 'b.' )
         self.update_all = False
         wx.CallAfter(self.dp.camera_figure.canvas.draw)
@@ -531,7 +534,7 @@ class CameraDisplayUpdater(threading.Thread):
         except RuntimeError:
             pass
         
-
+        # Labels for ROIs will need to be re-drawn as they might have changed
         self.label_artists = [self.ax.add_artist( \
                                 Text(x=self.roi_label_position(roi)[0], y=self.roi_label_position(roi)[1], color='g', backgroundcolor='w', \
                                     text=str( np.round(self.server.roi_stats(roi)['mean']) )) \
