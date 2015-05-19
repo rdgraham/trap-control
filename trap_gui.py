@@ -511,21 +511,23 @@ class CameraDisplayUpdater(threading.Thread):
             
     def update_plot(self):
         """Fully update the plot"""
-        
+
         self.ax.clear()
         data = np.load(StringIO.StringIO(self.server.scaled_image()))  
         self.image = self.ax.imshow(data, cmap=cm.get_cmap(self.dp.camera_colormap), vmin=0, vmax=256)
 
-        #self.background = self.dp.camera_figure.canvas.copy_from_bbox(self.ax.bbox) 
+        #self.background = self.dp.camera_figure.canvas.copy_from_bbox(self.ax.bbox)
 
-        #for roi in self.server.roi_list():
-        #    print 'draw circle for roi at ', roi[0], roi[1], roi[2]
         zoom = AcquisitionPanel().zoom
+        #for roi in self.server.roi_list():
+        #    print 'draw circle for roi at ', roi[0]/zoom, roi[1]/zoom
+
         self.circle_artists = [self.ax.add_artist( Circle( (roi[0]/zoom, roi[1]/zoom), roi[2], color='g', fill=False ) ) for roi in self.server.roi_list()]
             #self.circles = self.ax.plot( roi[0], roi[1], 'b.' )
+
         self.update_all = False
         wx.CallAfter(self.dp.camera_figure.canvas.draw)
-            
+
     def _draw_only_image(self):
         
         self.dp.camera_figure.canvas.restore_region(self.background)
@@ -951,18 +953,26 @@ class AcquisitionPanel(SingletonHasTraits):
     @on_trait_change('autoscale_min, autoscale_max')
     def update_autoscale_settings(self, name, new):
         try:
+            self.camera_handler('', False) #Disable updating
+
             conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
             conn.root.limit_autoscale(self.autoscale_min, self.autoscale_max)
             conn.close()
+
+            self.camera_handler('', True) #Re-enable
         except:
             print 'Connection to camera lost. Unable to change autoscale settings'
     
     @on_trait_change('frame_rate, em_gain, zoom')
     def update_camera_settings(self, name, new):
         try:
+            self.camera_handler('', False) #Disable updating
+
             conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
             conn.root.camera_setting(name, new)
             conn.close()
+
+            self.camera_handler('', True) #Re-enable
         except:
             print 'Connection to camera lost. Not able to set ', name, 'to', new
         
@@ -981,6 +991,7 @@ class AcquisitionPanel(SingletonHasTraits):
                 self._camera_update_thread.start()
             else:
                 self._camera_update_thread.stop()
+                self._camera_update_thread.join()
         except AttributeError:
             pass
     
