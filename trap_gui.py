@@ -434,14 +434,15 @@ class CameraDisplayUpdater(threading.Thread):
     
     _instance = None
     
-    def __init__(self, address, port, frame_rate):
+    def __init__(self, address, port, frame_rate, image_dimensions=(1002,1004) ):
         super(CameraDisplayUpdater, self).__init__()
         
         print 'Initialized camera update thread'
-        
+
         self.address = address
         self.port = port
         self.frame_rate = frame_rate
+        self.width, self.height = image_dimensions
         
         self._stop = threading.Event()
         self.cp = ControlPanel()
@@ -518,11 +519,15 @@ class CameraDisplayUpdater(threading.Thread):
 
         #self.background = self.dp.camera_figure.canvas.copy_from_bbox(self.ax.bbox)
 
-        zoom = AcquisitionPanel().zoom
+        zoom = float(AcquisitionPanel().zoom)
+
+        transformX = lambda x : x - (self.width/2.0)  + (self.width/(2*zoom))
+        transformY = lambda y : y - (self.height/2.0) + (self.height/(2*zoom))
+
         #for roi in self.server.roi_list():
         #    print 'draw circle for roi at ', roi[0]/zoom, roi[1]/zoom
 
-        self.circle_artists = [self.ax.add_artist( Circle( (roi[0]/zoom, roi[1]/zoom), roi[2], color='g', fill=False ) ) for roi in self.server.roi_list()]
+        self.circle_artists = [self.ax.add_artist( Circle( (transformX(roi[0]), transformY(roi[1])), roi[2], color='g', fill=False ) ) for roi in self.server.roi_list()]
             #self.circles = self.ax.plot( roi[0], roi[1], 'b.' )
 
         self.update_all = False

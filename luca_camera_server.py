@@ -50,6 +50,7 @@ class CameraService(rpyc.Service):
             newy = (height/2 - height/(2*cls.zoom) , height/2 + height/(2*cls.zoom) )
             
             cls.image = cls.image[ newx[0]:newx[1] , newy[0]:newy[1] ]
+            #print 'dimensions = ', width, height
             #print 'Originl was ', width, 'x' , height, ' new is ', np.shape(cls.image)
         
         print 'Got image. Intensity from ', np.min(cls.image)/saturation_level, ' to ', np.max(cls.image)/saturation_level
