@@ -22,10 +22,17 @@ class CameraService(rpyc.Service):
     auto_min = 0
     auto_max = 100
     zoom = 1
+    
+    _instance = None
+    def __new__(cls, *args, **kwargs): #make it a singleton
+        if not cls._instance:
+            cls._instance = super(CameraService, cls).__new__(
+                                cls, *args, **kwargs)
+        return cls._instance
 
     @classmethod
     def backend_init(cls):
-        cls.image = np.zeros((1000, 1000))
+        cls.image = np.zeros((1002, 1004))
         print 'Starting Andor LUCA camera driver ...'
         cls.luca = Luca()
         print '[Initilized OK]'
@@ -38,8 +45,7 @@ class CameraService(rpyc.Service):
         cls.luca.shutdown()
         print '[OK]'
     
-    @classmethod
-    def got_image(cls, image_data):
+    def got_image(self, image_data):
         cls.image = image_data.astype('f')
         
         #apply zoom
@@ -55,11 +61,7 @@ class CameraService(rpyc.Service):
         
         print 'Got image. Intensity from ', np.min(cls.image)/saturation_level, ' to ', np.max(cls.image)/saturation_level
 
-    #def exposed_autoscale_old(self):
-    #    self.autoscale()
-    #    print 'Client requested autoscale. Now max', self.scale_max, 'min', self.scale_min
-    @classmethod
-    def exposed_limit_autoscale(cls, auto_min, auto_max):
+    def exposed_limit_autoscale(self, auto_min, auto_max):
         cls.auto_min = auto_min
         cls.auto_max = auto_max
         print 'Client changed autoscale limits to ', cls.auto_min, '...', cls.auto_max
@@ -145,9 +147,14 @@ class CameraService(rpyc.Service):
         return mask
         
     def exposed_roi_stats(self, roi_name):
+        
+        width, height = (1002, 1004) #of the original image (roi coordinates are relative to original image)
+        
+        transformX = lambda x : x - (width/2.0)  + (width/(2*CameraService.zoom))
+        transformY = lambda y : y - (height/2.0) + (height/(2*CameraService.zoom))
                 
         roi = self.all_roi[roi_name]
-        mask = self.circular_mask( (roi[1], roi[0]), roi[2], self.image )
+        mask = self.circular_mask( (transformX(roi[1]), transformY(roi[0])), roi[2], self.image )
         mean = np.sum( self.image * mask ) / np.sum(mask)
         return {'mean' : mean}
         
@@ -160,10 +167,31 @@ class CameraService(rpyc.Service):
             del self.all_roi[name]
         except KeyError:
             pass
+            
+    def exposed_delete_rois(self, prefix):
+        "Remove all ROIs that have a name starting with given prefix"
+        self.all_roi = dict( filter( lambda x : not x.startswith(prefix), self.all_roi ) )
         
     def exposed_set_roi(self, roi_name, x, y, r):
         print 'Adding or changing roi named : ', roi_name
         self.all_roi[roi_name] = (x,y,r)
+        
+    def exposed_set_rois(self, name, number, x, y, r, spacing, axis_angle):
+        self.exposed_delete_rois(name)
+        
+        spacingX = spacing * math.cos( math.radians(axis_angle) )
+        spacingY = spacing * math.sin( math.radians(axis_angle) )
+        
+        if number % 2 : # odd numbers
+            for n in range(0, int(math.ceil(number/2.0))):
+                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX , y+n*spacingY, r)
+                if number > 0 : self.exposed_set_roi(name+str(n)+'r', x-n*spacingX , y-n*spacingY, r)
+        else: # even numbers
+            for n in range(0, number/2):
+                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX+.5*spacingX , y+n*spacingY+.5*spacingY, r)
+                self.exposed_set_roi(name+str(n)+'r', x-n*spacingX-.5*spacingX , y-n*spacingY-.5*spacingY, r)
+        
+        print 'Final roi list', self.all_roi, ' of ', str(self)
     
     def exposed_roi_list(self):
         return self.all_roi.values()

@@ -541,19 +541,22 @@ class CameraDisplayUpdater(threading.Thread):
         except RuntimeError:
             pass
         
-        # Labels for ROIs will need to be re-drawn as they might have changed
-        self.label_artists = [self.ax.add_artist( \
-                                Text(x=self.roi_label_position(roi)[0], y=self.roi_label_position(roi)[1], color='g', backgroundcolor='w', \
-                                    text=str( np.round(self.server.roi_stats(roi)['mean']) )) \
-                            ) for roi in self.server.roi_names()]
+
                         
         if self.dp.camera_show_roi_circles:
             for artist in self.circle_artists:
                 self.ax.draw_artist(artist)
         
         if self.dp.camera_show_roi_info:
+            # Labels for ROIs will need to be re-drawn as they might have changed
+            self.label_artists = [self.ax.add_artist( \
+                                Text(x=self.roi_label_position(roi)[0], y=self.roi_label_position(roi)[1], color='g', backgroundcolor='w', \
+                                    text=str( np.round(self.server.roi_stats(roi)['mean']) )) \
+                            ) for roi in self.server.roi_names()]
             for artist in self.label_artists:
                 self.ax.draw_artist(artist)
+        else:
+            self.label_artists = []
         
         self.dp.camera_figure.canvas.blit(self.ax.bbox)
         
@@ -907,6 +910,7 @@ class SetupPanel(SingletonHasTraits):
 
 class AcquisitionPanel(SingletonHasTraits):
     
+    zoom = Enum(1, 2, 3, 4)
     count_period = Float()
     frame_rate = Float()
     em_gain = Range(0.0, 200.0)
@@ -914,11 +918,14 @@ class AcquisitionPanel(SingletonHasTraits):
     autoscale_max = Range(0.0, 100.0)
     counting = Bool()
     update_camera = Bool()
+    
     manual_roi = Bool()
     roi_x = Float()
     roi_y = Float()
     roi_r = Float()
-    zoom = Enum(1, 2, 3, 4)
+    roi_number = Enum(1, 2, 3, 4)
+    roi_spacing = Float()
+    roi_axis_angle = Float()
     
     view = View( Group( 
                     Group(
@@ -935,10 +942,13 @@ class AcquisitionPanel(SingletonHasTraits):
                         label = 'Imaging'
                         ),
                     Group(
-                        Item('manual_roi', label='Set manual ROI'),
+                        Item('manual_roi', label='Set manual ROIs'),
+                        Item('roi_number', label = 'Number of regions'),
                         Item('roi_x', label='horizontal center'),
                         Item('roi_y', label='Vertical center'),
                         Item('roi_r', label='Radius'),
+                        Item('roi_spacing', label='Spacing', enabled_when='roi_number>1'),
+                        Item('roi_axis_angle', label='Axis angle', enabled_when='roi_number>1'),
                         label = 'Region of interest'
                         )
                     )
@@ -1000,7 +1010,7 @@ class AcquisitionPanel(SingletonHasTraits):
         except AttributeError:
             pass
     
-    @on_trait_change('manual_roi,roi_x,roi_y,roi_r')
+    @on_trait_change('manual_roi,roi_x,roi_y,roi_r,roi_number,roi_spacing,roi_axis_angle')
     def roi_handler(self, name, state):
         try:
             conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
@@ -1010,9 +1020,13 @@ class AcquisitionPanel(SingletonHasTraits):
             
         print 'Sending updated ROI to server'
         if self.manual_roi:
-            conn.root.set_roi('manual', self.roi_x, self.roi_y, self.roi_r)
+            conn.root.set_rois('manual', self.roi_number, \
+                                         self.roi_x, self.roi_y, self.roi_r, \
+                                         self.roi_spacing, self.roi_axis_angle)
+            #conn.root.set_roi('manual', self.roi_x, self.roi_y, self.roi_r)
         else:
-            conn.root.delete_roi('manual')
+            #conn.root.delete_roi('manual')
+            conn.root.delete_rois('manual')
         conn.close()
         
         # also need to trigger a full update of the plot so the circles can be drawn

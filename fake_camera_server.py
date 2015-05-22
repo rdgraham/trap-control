@@ -1,14 +1,24 @@
 import rpyc
 import numpy as np
+import math
 import cStringIO as StringIO
 from rpyc.utils.server import ThreadedServer
+
 
 class CameraService(rpyc.Service):
 
     all_roi = {}
-    
     backend = None
     
+    _instance = None
+    def __new__(cls, *args, **kwargs): #make it a singleton
+        if not cls._instance:
+            cls._instance = super(CameraService, cls).__new__(
+                                cls, *args, **kwargs)
+        return cls._instance
+
+    #def __init__(self):
+    #    print 'New camera service'
     @classmethod
     def backend_init(cls):
         print 'Initilizing backend'
@@ -71,11 +81,33 @@ class CameraService(rpyc.Service):
             del self.all_roi[name]
         except KeyError:
             pass
-        
-    def exposed_set_roi(self, roi_name, x, y, r):
-        print 'Adding or changing roi named : ', roi_name
-        self.all_roi[roi_name] = (x,y,r)
     
+    def exposed_delete_rois(self, prefix):
+        "Remove all ROIs that have a name starting with given prefix"
+        
+        self.all_roi = dict( filter( lambda x : not x.startswith(prefix), self.all_roi ) )
+    
+    def exposed_set_roi(self, name, x, y, r):
+        print 'Adding or changing roi named : ', name
+        self.all_roi[name] = (x,y,r)
+        
+    def exposed_set_rois(self, name, number, x, y, r, spacing, axis_angle):
+        self.exposed_delete_rois(name)
+        
+        spacingX = spacing * math.cos( math.radians(axis_angle) )
+        spacingY = spacing * math.sin( math.radians(axis_angle) )
+        
+        if number % 2 : # odd numbers
+            for n in range(0, int(math.ceil(number/2.0))):
+                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX , y+n*spacingY, r)
+                if number > 0 : self.exposed_set_roi(name+str(n)+'r', x-n*spacingX , y-n*spacingY, r)
+        else: # even numbers
+            for n in range(0, number/2):
+                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX+.5*spacingX , y+n*spacingY+.5*spacingY, r)
+                self.exposed_set_roi(name+str(n)+'r', x-n*spacingX-.5*spacingX , y-n*spacingY-.5*spacingY, r)
+        
+        print 'Final roi list', self.all_roi, ' of ', str(self)
+        
     def exposed_roi_list(self):
         return self.all_roi.values()
     
@@ -89,6 +121,7 @@ if __name__ == "__main__":
     
     print 'Starting fake camera service'
 
+    #service = CameraService()
     CameraService.backend_init()
     t = ThreadedServer( CameraService, port = 18861, protocol_config = {"allow_public_attrs" : True, \
                                                                         "allow_pickle" : True})
