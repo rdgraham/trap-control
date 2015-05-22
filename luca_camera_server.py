@@ -2,6 +2,7 @@ import rpyc
 import numpy as np
 import cStringIO as StringIO
 import time
+import math
 from ctypes import *
 from ctypes.wintypes import HANDLE
 import win32event
@@ -36,16 +37,17 @@ class CameraService(rpyc.Service):
         print 'Starting Andor LUCA camera driver ...'
         cls.luca = Luca()
         print '[Initilized OK]'
-        cls.luca.start_acquiring(callback = CameraService.got_image)
+        cls.luca.start_acquiring(callback = cls.got_image)
         print '[Acquiring OK]'
-    
+
     @classmethod
     def backend_terminate(cls):
         print 'Terminating Andor LUCA camera driver ...'
         cls.luca.shutdown()
         print '[OK]'
-    
-    def got_image(self, image_data):
+
+    @classmethod
+    def got_image(cls, image_data):
         cls.image = image_data.astype('f')
         
         #apply zoom
@@ -57,14 +59,14 @@ class CameraService(rpyc.Service):
             
             cls.image = cls.image[ newx[0]:newx[1] , newy[0]:newy[1] ]
             #print 'dimensions = ', width, height
-            #print 'Originl was ', width, 'x' , height, ' new is ', np.shape(cls.image)
+            #print 'Originl was ', width, 'x' , height, ' new is ', np.shape(self.image)
         
         print 'Got image. Intensity from ', np.min(cls.image)/saturation_level, ' to ', np.max(cls.image)/saturation_level
 
     def exposed_limit_autoscale(self, auto_min, auto_max):
-        cls.auto_min = auto_min
-        cls.auto_max = auto_max
-        print 'Client changed autoscale limits to ', cls.auto_min, '...', cls.auto_max
+        self.auto_min = auto_min
+        self.auto_max = auto_max
+        print 'Client changed autoscale limits to ', self.auto_min, '...', self.auto_max
     
     def exposed_autoscale(self):
         try:
@@ -185,7 +187,7 @@ class CameraService(rpyc.Service):
         if number % 2 : # odd numbers
             for n in range(0, int(math.ceil(number/2.0))):
                 self.exposed_set_roi(name+str(n)+'l', x+n*spacingX , y+n*spacingY, r)
-                if number > 0 : self.exposed_set_roi(name+str(n)+'r', x-n*spacingX , y-n*spacingY, r)
+                if n > 0 : self.exposed_set_roi(name+str(n)+'r', x-n*spacingX , y-n*spacingY, r)
         else: # even numbers
             for n in range(0, number/2):
                 self.exposed_set_roi(name+str(n)+'l', x+n*spacingX+.5*spacingX , y+n*spacingY+.5*spacingY, r)
@@ -381,19 +383,19 @@ class Luca( object ):
             self.callback = callback
         
         if self.acquiring or self.event:
-            print 'Not able to start acqusition thread'
+            print 'Not able to start acquisition thread'
             return
         
         self.thread = Thread(target=self._acquire, args=(callback,))
         self.thread.start()
-        print 'Started acqusition thread'
+        print 'Started acquisition thread'
             
     def stop_acquiring( self, join = False ):
         self.acquiring = False
         if join:
             self.thread.join()
         time.sleep(self.exposure_time)
-        print 'Stopped acqusition'
+        print 'Stopped acquisition'
         
     def shutdown( self ):
         self.acquiring = False
