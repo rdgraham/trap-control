@@ -515,7 +515,7 @@ class CameraDisplayUpdater(threading.Thread):
 
         self.ax.clear()
         data = np.load(StringIO.StringIO(self.server.scaled_image()))  
-        self.image = self.ax.imshow(data, cmap=cm.get_cmap(self.dp.camera_colormap), vmin=0, vmax=256)
+        self.image = self.ax.imshow(data, cmap=cm.get_cmap(self.dp.camera_colormap), vmin=0, vmax=256, origin='lower')
 
         #self.background = self.dp.camera_figure.canvas.copy_from_bbox(self.ax.bbox)
 
