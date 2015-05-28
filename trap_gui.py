@@ -1058,10 +1058,11 @@ class ManualPanel(SingletonHasTraits):
     trap_region  = Instance(TrapRegion, ())
     switches = Instance(SwitchPanel, ())
     lasers = Instance(LasersPanel, ())
-    
+
     update_electrodes = Button('Electrodes')
-    update_lasers = Button('Lasers')
-    update_electrodes_and_lasers = Button('Electrodes and Lasers')
+    update_laser_pointing = Button('Laser Pointing')
+    update_camera_pointing = Button('Camera Pointing')
+    #update_electrodes_and_lasers = Button('Electrodes and Lasers')
     
     view = View(Group( Group(Item('trap_region', style='custom', show_label=False),
                             label='Trap Region', dock='tab'),
@@ -1075,14 +1076,14 @@ class ManualPanel(SingletonHasTraits):
                         ),
                         Group(
                             Item('update_electrodes', show_label=False),
-                            Item('update_lasers', show_label=False),
-                            Item('update_electrodes_and_lasers', show_label=False),
+                            Item('update_laser_pointing', show_label=False),
+                            Item('update_camera_pointing', show_label=False),
                             label='Update',
                         ),
                     ),
                )
     
-    def _update_lasers_fired(self):
+    def _update_laser_pointing_fired(self):
         lp = LasersPanel()
         cp = ControlPanel()
         #solution_class = solutions.get_from_description( cp.manual_panel.trap_region.solution )
@@ -1091,7 +1092,7 @@ class ManualPanel(SingletonHasTraits):
         #    return
         #solution = solution_class( cp.setup_panel.parameters )
         
-        print 'Updating lasers'
+        print 'Updating laser pointing'
         driver = lasers.Driver( Devices().lasers_driver_name )
         driver.set_solution( TrapRegion().solution )
         driver.clear_all()

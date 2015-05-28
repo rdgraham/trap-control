@@ -117,7 +117,7 @@ class SerialDriver(AbstractDriver):
     def __init__(self, devname):
         super(SerialDriver, self).__init__(devname)
         
-        print 'Serial Laser driver initilized'
+        print 'Serial Laser driver initialized'
         if self.serial_device is None:
             self.serial_device = serial.Serial(devname[4:])
         
