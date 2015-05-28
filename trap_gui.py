@@ -646,10 +646,16 @@ class LasersPanel(SingletonHasTraits):
                        Item('location4', show_label=False, springy=True, editor=RangeEditor(low_name = 'location4_min', high_name = 'location4_max', mode='slider')),
                        orientation = 'horizontal',  enabled_when='num_locations > 3'),
                )
-    
+
+    _cooling_time_default       = lambda self : SettingLoader('LasersPanel.cooling_time', 1000)()
+
     def get_laser_positions(self):
         return [(getattr(self, 'region'+str(i)), getattr(self, 'location'+str(i))) for i in range(1,self.num_locations+1)]
-            
+
+    @on_trait_change('cooling_time')
+    def _update_cooling_time(self):
+        to_save['LasersPanel.cooling_time'] = self.cooling_time
+
     @on_trait_change('region1,region2,region3,region4')
     def _region_change_handler(self, name, new):
         print 'Setting limits for region ', name, new
