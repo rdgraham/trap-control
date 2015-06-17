@@ -178,20 +178,21 @@ class CameraService(rpyc.Service):
         print 'Adding or changing roi named : ', roi_name
         self.all_roi[roi_name] = (x,y,r)
         
-    def exposed_set_rois(self, name, number, x, y, r, spacing, axis_angle):
+    def exposed_set_rois(self, name, number, x, y, r, spacing, axis_angle, spring):
         self.exposed_delete_rois(name)
-        
-        spacingX = spacing * math.cos( math.radians(axis_angle) )
-        spacingY = spacing * math.sin( math.radians(axis_angle) )
-        
+
         if number % 2 : # odd numbers
             for n in range(0, int(math.ceil(number/2.0))):
-                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX , y+n*spacingY, r)
-                if n > 0 : self.exposed_set_roi(name+str(n)+'r', x-n*spacingX , y-n*spacingY, r)
+                spacingX = (spacing + spring * n) * math.cos( math.radians(axis_angle) )
+                spacingY = (spacing + spring * n) * math.sin( math.radians(axis_angle) )
+                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX, y+n*spacingY, r)
+                if n > 0 : self.exposed_set_roi(name+str(n)+'r', x-n*spacingX, y-n*spacingY, r)
         else: # even numbers
             for n in range(0, number/2):
-                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX+.5*spacingX , y+n*spacingY+.5*spacingY, r)
-                self.exposed_set_roi(name+str(n)+'r', x-n*spacingX-.5*spacingX , y-n*spacingY-.5*spacingY, r)
+                spacingX = (spacing + spring*n) * math.cos( math.radians(axis_angle) )
+                spacingY = (spacing + spring*n) * math.sin( math.radians(axis_angle) )
+                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX+.5*spacingX, y+n*spacingY+.5*spacingY, r)
+                self.exposed_set_roi(name+str(n)+'r', x-n*spacingX-.5*spacingX, y-n*spacingY-.5*spacingY, r)
         
         print 'Final roi list', self.all_roi, ' of ', str(self)
     

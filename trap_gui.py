@@ -929,9 +929,10 @@ class AcquisitionPanel(SingletonHasTraits):
     roi_x = Float()
     roi_y = Float()
     roi_r = Float()
-    roi_number = Enum(1, 2, 3, 4)
+    roi_number = Enum(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
     roi_spacing = Float()
     roi_axis_angle = Float()
+    roi_spring = Float()
     
     view = View( Group( 
                     Group(
@@ -955,6 +956,7 @@ class AcquisitionPanel(SingletonHasTraits):
                         Item('roi_r', label='Radius'),
                         Item('roi_spacing', label='Spacing', enabled_when='roi_number>1'),
                         Item('roi_axis_angle', label='Axis angle', enabled_when='roi_number>1'),
+                        Item('roi_spring', label='Spring parameter', enabled_when='roi_number>1'),
                         label = 'Region of interest'
                         )
                     )
@@ -1016,7 +1018,7 @@ class AcquisitionPanel(SingletonHasTraits):
         except AttributeError:
             pass
     
-    @on_trait_change('manual_roi,roi_x,roi_y,roi_r,roi_number,roi_spacing,roi_axis_angle')
+    @on_trait_change('manual_roi,roi_x,roi_y,roi_r,roi_number,roi_spacing,roi_axis_angle,roi_spring')
     def roi_handler(self, name, state):
         try:
             conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
@@ -1028,7 +1030,7 @@ class AcquisitionPanel(SingletonHasTraits):
         if self.manual_roi:
             conn.root.set_rois('manual', self.roi_number, \
                                          self.roi_x, self.roi_y, self.roi_r, \
-                                         self.roi_spacing, self.roi_axis_angle)
+                                         self.roi_spacing, self.roi_axis_angle, self.roi_spring)
             #conn.root.set_roi('manual', self.roi_x, self.roi_y, self.roi_r)
         else:
             #conn.root.delete_roi('manual')
