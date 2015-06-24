@@ -65,7 +65,7 @@ class Parameters(SingletonHasTraits):
     """
     rf_voltage = Float(100)
     rf_frequency = Float(20)
-    ion_mass = Int(137)
+    ion_mass = Int(138)
 
 class Devices(SingletonHasTraits):
     #dac_driver = String('LPT/0xCD00')
