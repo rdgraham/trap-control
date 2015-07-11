@@ -1,4 +1,5 @@
 from solution import Solution, CopyRegion
+import os
 
 class SandiaHoa2(Solution):
     for_traps = ('hoa2')
@@ -402,3 +403,43 @@ class Anharmonic(Solution):
             #return self.base_solution.interpolated_voltage_at( (x, y), right_region)
         #else:
             #return self.base_solution.interpolated_voltage_at( (x, y), left_region)
+
+class ManualTextFile(Solution):
+    for_traps = ('hoa2')
+    description = 'Manual text file'
+    uses_regions = ('Q')
+    adjustable = ('Sym scale', 'Asym scale')  #other controls disabled [todo]
+
+    def __init__(self, p):
+        Solution.__init__(self, p)
+    
+    def interpolated_voltage_at(self, (x,y), region):
+        
+        filename = 'solutions' + os.sep + 'manual.txt'
+        undefined = 0
+        # Parse file each time incase it changed
+        with open(filename) as f:
+            for line in f:
+                if line.startswith('#') : continue
+                if len(line.strip()) == 0: continue
+                
+                try:
+                    position, designator, voltage = line.split()
+                    voltage = float(voltage)
+                    
+                    if position == 'undefined' : 
+                        undefined = voltage
+                        continue
+                    
+                    position = int(position)
+                    
+                    if designator == 'relative':
+                        position = int(round(region.center)) - position
+                    
+                    if position == x:
+                        # OK, this is the one
+                        if y <= 0 : return voltage * region.sym_scale + voltage * region.asym_scale
+                        if y > 0 : return voltage * region.sym_scale - voltage * region.asym_scale
+                except:
+                    return undefined            
+            return undefined

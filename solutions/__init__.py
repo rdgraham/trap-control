@@ -19,7 +19,7 @@ for klass in _classes:
     if not has_parent(klass, 'Solution'): continue
     module = __import__(klass.module, fromlist=[klass.name])
     solution_classes.append( getattr( module , klass.name) ) 
-    print 'Found solution class ', klass.name
+    print 'Found solution class ', klass.name, ' description : ', getattr( module , klass.name).description
     
 def get_from_description(s):
     for c in solution_classes:
