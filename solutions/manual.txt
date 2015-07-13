@@ -1,0 +1,15 @@
+# Simple manual text file solution
+# Field 0: the position as integer or text 'undefined'
+# Field 1: position designator, relative, fixed or 'undefined'
+# Field 2: the voltage
+
+undefined undefined 0
+
+-2 relative 1
+-1 relative .5
+-0 relative -.5
+1 relative .5
+2 relative 1
+
+19 fixed -.5
+20 fixed -.5
