@@ -924,6 +924,7 @@ class AcquisitionPanel(SingletonHasTraits):
     autoscale_max = Range(0.0, 100.0)
     counting = Bool()
     update_camera = Bool()
+    auto_optimize = Button('Auto optimize')
     
     manual_roi = Bool()
     roi_x = Float()
@@ -957,6 +958,7 @@ class AcquisitionPanel(SingletonHasTraits):
                         Item('roi_spacing', label='Spacing', enabled_when='roi_number>1'),
                         Item('roi_axis_angle', label='Axis angle', enabled_when='roi_number>1'),
                         Item('roi_spring', label='Spring parameter', enabled_when='roi_number>1'),
+                        Item('auto_optimize', show_label=False, enabled_when='manual_roi'),
                         label = 'Region of interest'
                         )
                     )
@@ -968,6 +970,21 @@ class AcquisitionPanel(SingletonHasTraits):
     _autoscale_min_default    = lambda self : SettingLoader('acqusition.camera.autoscale_min', 0)()
     _autoscale_max_default    = lambda self : SettingLoader('acqusition.camera.autoscale_max', 100)()
     _zoom_default             = lambda self : SettingLoader('acqusition.camera.zoom', 1)()
+    
+    def _auto_optimize_fired(self):
+        print 'Trying to optimize ROI set'
+        
+        conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
+        result = conn.root.optimize_roi(self.roi_number, 
+                                        self.roi_x, 
+                                        self.roi_y, 
+                                        self.roi_r, 
+                                        self.roi_spacing, 
+                                        self.roi_axis_angle, 
+                                        self.roi_spring)
+        conn.close()
+        
+        #print result
     
     @on_trait_change('frame_rate, em_gain, autoscale_min, autoscale_max', 'zoom')
     def save_camera_settings(self, name, new):
@@ -1084,8 +1101,8 @@ class ManualPanel(SingletonHasTraits):
                         ),
                         Group(
                             Item('update_electrodes', show_label=False),
-                            Item('update_laser_pointing', show_label=False),
-                            Item('update_camera_pointing', show_label=False),
+                            #Item('update_laser_pointing', show_label=False),
+                            #Item('update_camera_pointing', show_label=False),
                             label='Update',
                         ),
                     ),
@@ -1162,15 +1179,15 @@ class DisplayPanel(SingletonHasTraits):
 
     view = View(Group(
                     Group( 
-                        Item('solution_figure', editor=MPLFigureEditor(), dock='vertical', height=.9, show_label=False),
+                        Item('solution_figure', editor=MPLFigureEditor(), dock='vertical', height=.7, show_label=False),
                         Item('solution_info', style = 'readonly', height=.1, show_label=False),
                         label='Electrodes'),
                     Group(
-                        Item('photons_figure', editor=MPLFigureEditor(), dock='vertical', height=.95, show_label=False),
+                        Item('photons_figure', editor=MPLFigureEditor(), dock='vertical', height=.75, show_label=False),
                         Item('photons_plot_autoscale', height=.05, show_label=False),
                         label='Photons'),
                     Group(
-                        Item('camera_figure', editor=MPLFigureEditor(), dock='vertical', height=.95, show_label=False),
+                        Item('camera_figure', editor=MPLFigureEditor(), dock='vertical', height=.75, show_label=False),
                         Item('camera_info', style = 'readonly', height=.1, show_label=False),
                         Group(
                             Item('camera_autoscale', height=.05, show_label=False),

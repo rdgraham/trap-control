@@ -7,6 +7,8 @@ from ctypes import *
 from ctypes.wintypes import HANDLE
 import win32event
 
+from scipy.optimize import fmin
+
 from threading import Thread
 from rpyc.utils.server import ThreadedServer
 
@@ -204,7 +206,30 @@ class CameraService(rpyc.Service):
     
     def exposed_get_roi(self,name):
         return self.all_roi[name]
-    
+
+    def exposed_optimize_roi(self, number, x, y, r, spacing, axis_angle, spring):
+        print "Optimize rois"
+
+        def roi_optimize(p, number, r, axis_angle):            
+            print "Trying : ", p
+            
+            x, y, spacing, spring = p[0], p[1], p[2], p[3]
+            
+            self.exposed_set_rois('manual', number, x, y, r, spacing, axis_angle, spring)
+            #print 'all roi keys ', self.all_roi.keys()
+            #print 'mean[0] ', self.exposed_roi_stats(self.all_roi.keys()[0])['mean']
+            means = [self.exposed_roi_stats(roi)['mean'] for roi in self.all_roi.keys()]
+            score = 1.0/np.sum(means)
+            print 'Score : ', score 
+            return score
+        
+        x0   = [ x, y, spacing, spring ]
+        args = ( number, r, axis_angle )
+        opt  = fmin(roi_optimize, x0, args=args, maxiter=1000)
+        
+        print 'Final result ', opt
+        return opt
+
     def exposed_camera_setting(self, setting, value):
         """Change a camera setting to given value. Automatically stops the acqusition if required.
            'frame_rate' and 'em_gain' currently supported.

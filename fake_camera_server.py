@@ -3,7 +3,8 @@ import numpy as np
 import math
 import cStringIO as StringIO
 from rpyc.utils.server import ThreadedServer
-
+#from scipy.optimize import fmin_powell as fmin
+from scipy.optimize import fmin
 
 class CameraService(rpyc.Service):
 
@@ -31,6 +32,7 @@ class CameraService(rpyc.Service):
         print 'Returning camera image'
         image = (255*np.random.rand(1000, 1000)).astype(np.uint8)
         image = (image*.5) + image*self.circular_mask( (500,500), 30, image )
+        self.image = image
         #image[500:600,500:600] = 255*np.ones([100,100])
         # need to make a copy in some way on the server side otherwise
         # it will be really slow as synchronizing object across socket
@@ -66,10 +68,14 @@ class CameraService(rpyc.Service):
                  'stdev' : float(np.std(image)) / image_max }
     
     def exposed_roi_stats(self, roi_name):
-        image = (256*np.random.rand(1000, 1000)).astype(np.uint8)
+        #image = (256*np.random.rand(1000, 1000)).astype(np.uint8)
+        image = self.image
         
         roi = self.all_roi[roi_name]
-        mean = np.mean( image * self.circular_mask( (roi[0], roi[1]), roi[2], image ) )
+        mask = self.circular_mask( (roi[0], roi[1]), roi[2], image )
+        mean = np.sum( self.image * mask ) / np.sum(mask)
+        print 'image : ', np.min(image), np.max(image), np.mean(image)
+        print 'mask : ', np.min(mask), np.max(mask), np.mean(mask)
         return {'mean' : mean}
         
     #return(sum(array[mask]))
@@ -88,10 +94,10 @@ class CameraService(rpyc.Service):
         self.all_roi = dict( filter( lambda x : not x.startswith(prefix), self.all_roi ) )
     
     def exposed_set_roi(self, name, x, y, r):
-        print 'Adding or changing roi named : ', name
+        #print 'Adding or changing roi named : ', name, ' : New settings ', x,y,r
         self.all_roi[name] = (x,y,r)
         
-    def exposed_set_rois(self, name, number, x, y, r, spacing, axis_angle):
+    def exposed_set_rois(self, name, number, x, y, r, spacing, axis_angle, spring):
         self.exposed_delete_rois(name)
         
         spacingX = spacing * math.cos( math.radians(axis_angle) )
@@ -99,15 +105,28 @@ class CameraService(rpyc.Service):
         
         if number % 2 : # odd numbers
             for n in range(0, int(math.ceil(number/2.0))):
-                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX , y+n*spacingY, r)
-                if number > 0 : self.exposed_set_roi(name+str(n)+'r', x-n*spacingX , y-n*spacingY, r)
+                spacingX = (spacing + spring * n) * math.cos( math.radians(axis_angle) )
+                spacingY = (spacing + spring * n) * math.sin( math.radians(axis_angle) )
+                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX, y+n*spacingY, r)
+                if n > 0 : self.exposed_set_roi(name+str(n)+'r', x-n*spacingX, y-n*spacingY, r)
         else: # even numbers
             for n in range(0, number/2):
-                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX+.5*spacingX , y+n*spacingY+.5*spacingY, r)
-                self.exposed_set_roi(name+str(n)+'r', x-n*spacingX-.5*spacingX , y-n*spacingY-.5*spacingY, r)
+                spacingX = (spacing + spring*n) * math.cos( math.radians(axis_angle) )
+                spacingY = (spacing + spring*n) * math.sin( math.radians(axis_angle) )
+                self.exposed_set_roi(name+str(n)+'l', x+n*spacingX+.5*spacingX, y+n*spacingY+.5*spacingY, r)
+                self.exposed_set_roi(name+str(n)+'r', x-n*spacingX-.5*spacingX, y-n*spacingY-.5*spacingY, r)
+ 
+        #if number % 2 : # odd numbers
+            #for n in range(0, int(math.ceil(number/2.0))):
+                #self.exposed_set_roi(name+str(n)+'l', x+n*spacingX , y+n*spacingY, r)
+                #if number > 0 : self.exposed_set_roi(name+str(n)+'r', x-n*spacingX , y-n*spacingY, r)
+        #else: # even numbers
+            #for n in range(0, number/2):
+                #self.exposed_set_roi(name+str(n)+'l', x+n*spacingX+.5*spacingX , y+n*spacingY+.5*spacingY, r)
+                #self.exposed_set_roi(name+str(n)+'r', x-n*spacingX-.5*spacingX , y-n*spacingY-.5*spacingY, r)
         
-        print 'Final roi list', self.all_roi, ' of ', str(self)
-        
+        #print 'Final roi list', self.all_roi, ' of ', str(self)
+    
     def exposed_roi_list(self):
         return self.all_roi.values()
     
@@ -116,6 +135,30 @@ class CameraService(rpyc.Service):
     
     def exposed_get_roi(self,name):
         return self.all_roi[name]
+    
+    
+    def exposed_optimize_roi(self, number, x, y, r, spacing, axis_angle, spring):
+        print "Optimize rois"
+
+        def roi_optimize(p, number, r, axis_angle):            
+            print "Trying : ", p
+            
+            x, y, spacing, spring = p[0], p[1], p[2], p[3]
+            
+            self.exposed_set_rois('manual', number, x, y, r, spacing, axis_angle, spring)
+            #print 'all roi keys ', self.all_roi.keys()
+            #print 'mean[0] ', self.exposed_roi_stats(self.all_roi.keys()[0])['mean']
+            means = [self.exposed_roi_stats(roi)['mean'] for roi in self.all_roi.keys()]
+            score = 1.0/np.sum(means)
+            print 'Score : ', score 
+            return score
+        
+        x0   = [ x, y, spacing, spring ]
+        args = ( number, r, axis_angle )
+        opt  = fmin(roi_optimize, x0, args=args, maxiter=1000)
+        
+        print 'Final result ', opt
+        return opt
         
 if __name__ == "__main__":
     
