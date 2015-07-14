@@ -29,6 +29,7 @@ import sys
 import matplotlib
 
 import rpyc
+from rpyc.utils.helpers import async
 
 import switches
 import solutions
@@ -973,18 +974,39 @@ class AcquisitionPanel(SingletonHasTraits):
     
     def _auto_optimize_fired(self):
         print 'Trying to optimize ROI set'
+        self.manual_roi = False
         
         conn = rpyc.connect(Devices().camera_server, Devices().camera_port, config = {"allow_public_attrs" : True, "allow_pickle" : True})
-        result = conn.root.optimize_roi(self.roi_number, 
-                                        self.roi_x, 
-                                        self.roi_y, 
-                                        self.roi_r, 
-                                        self.roi_spacing, 
-                                        self.roi_axis_angle, 
-                                        self.roi_spring)
-        conn.close()
+        # immediatly returns an async result
+        async_optimize = async(conn.root.optimize_roi)
+        result = async_optimize(self.roi_number, 
+                        self.roi_x, 
+                        self.roi_y, 
+                        self.roi_r, 
+                        self.roi_spacing, 
+                        self.roi_axis_angle, 
+                        self.roi_spring)
         
-        #print result
+        def wait_for_result():
+            while not result.ready:
+                sleep(0.1)
+            
+            opt = result.value
+            print "Done : ", opt
+            
+            self.roi_number = opt[0]
+            self.roi_x = opt[1]
+            self.roi_y = opt[2]
+            self.roi_r = opt[3]
+            self.roi_spacing = opt[4]
+            self.roi_axis_angle = opt[5]
+            self.roi_spring = opt[6]
+            
+            conn.close()
+            self.manual_roi = True
+            
+        t = threading.Thread(target=wait_for_result)
+        t.start()
     
     @on_trait_change('frame_rate, em_gain, autoscale_min, autoscale_max', 'zoom')
     def save_camera_settings(self, name, new):
