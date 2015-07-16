@@ -210,6 +210,10 @@ class CameraService(rpyc.Service):
     def exposed_optimize_roi(self, number, x, y, r, spacing, axis_angle, spring):
         print "Optimize rois ..."
 
+        # Stop acquisition first
+        original_frame_rate = self.frame_rate
+        self.exposed_camera_setting('frame_rate', 0)
+
         def roi_optimize(p, number, r, axis_angle):            
             x, y, spacing, spring = p[0], p[1], p[2], p[3]
             self.exposed_set_rois('manual', number, x, y, r, spacing, axis_angle, spring)
@@ -220,6 +224,9 @@ class CameraService(rpyc.Service):
         x0   = [ x, y, spacing, spring ]
         args = ( number, r, axis_angle )
         opt  = fmin(roi_optimize, x0, args=args, maxiter=1000)
+        
+        # Restart acquisition
+        self.exposed_camera_setting('frame_rate', original_frame_rate)
         
         print 'Final result ', opt
         return [int(number), float(opt[0]), float(opt[1]), float(r), float(opt[2]), float(axis_angle), float(opt[3])]
@@ -241,9 +248,11 @@ class CameraService(rpyc.Service):
             self.luca.stop_acquiring(join=True)
 
         if setting == 'frame_rate' and value == 0.0 : 
+            self.frame_rate = value
             self.luca.stop_acquiring(join=True)
             was_acquiring = False
         if setting == 'frame_rate' and value > 0.0 :
+            self.frame_rate = value
             self.luca.set_exposure(1.0/value)
             was_acquiring = True
         
