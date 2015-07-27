@@ -6,6 +6,7 @@ from itertools import izip_longest
 import sys, argparse, re, time, struct, socket
 import trap_mapper
 import solutions
+import hashlib
 from repoze.lru import lru_cache  #for python2, if update to python3 use functools
 try:
     import parallel
@@ -66,6 +67,9 @@ class Driver(object):
         
     def write_frames(self, frames):
         " Writes out a list of frames "
+        checksum = hashlib.sha1()
+        checksum.update(frames)
+        print "Writing a sequence of frames to DAC with checksum " + str(checksum.hexdigest())
         num_frames = len(frames)
         for i,f in enumerate(frames):
             final = i == num_frames-1
