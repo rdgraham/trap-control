@@ -68,9 +68,9 @@ class Driver(object):
     def write_frames(self, frames):
         " Writes out a list of frames "
         checksum = hashlib.sha1()
-        checksum.update(frames)
-        print "Writing a sequence of frames to DAC with checksum " + str(checksum.hexdigest())
+        checksum.update(str(frames))
         num_frames = len(frames)
+        print "Writing a sequence of "+str(num_frames)+" frames to DAC with checksum " + str(checksum.hexdigest())
         for i,f in enumerate(frames):
             final = i == num_frames-1
             self.write_frame(f, final_update_frame = final)
@@ -454,6 +454,7 @@ class DacController(object):
         frames_to_write = []
         frames_to_write = self.update(potentials, print_output=print_output)
         frames_to_write = frames_to_write + frames_to_write
+        print "Computed "+str(len(frames_to_write))+" frames to write"
         return frames_to_write
         
     def build_sequence( self, start, end, steps, return_to_start = False, print_output=False):
@@ -512,7 +513,7 @@ class DacController(object):
         
         return frames_to_write
         
-    def update( self, raw_updates, write = True, print_output = False ):
+    def update( self, raw_updates, write = False, print_output = False ):
         """Returns the sequence of data frames to write in order to update the DAC given raw_updates.
            raw_updates is a dictionary with the keys the electrodes and values the voltages.
            
